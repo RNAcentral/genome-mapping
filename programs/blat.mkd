@@ -1,10 +1,15 @@
-# Evaluating BLAT
+---
+title: Evaluating BLAT
+tags:
+- blat
+- genome-mapping
+...
 
 BLAT promises to match sequences against a genome very quickly. In addition, it
 claims that it can unsplice a transcript to match it to the genome. If so it
 may be really useful for our purposes. 
 
-## Running sequences
+# Running sequences
 
 I am just picking some sequences that have a known mapping to the genome and
 seeing how the blat server performs. I am looking to see if it can map all
@@ -13,7 +18,7 @@ things. I will only record the things that do not work.
 This [sequence](http://rnacentral.org/rna/URS00000E07AE/9606) only gives a partial match.
 Below are the results from the [blat server](http://genome.ucsc.edu/cgi-bin/hgBlat?command=start).
 
-## BLAT Search Results
+# BLAT Search Results
 
    ACTIONS      QUERY           SCORE START  END QSIZE IDENTITY CHRO STRAND  START    END      SPAN
 ---------------------------------------------------------------------------------------------------
@@ -61,7 +66,7 @@ This is probably worth trying out. I think I will install blat (at least in a
 docker container) and then use this to map some E. coli sequences to the
 correct locations. 
 
-## Fully testing RNAcentral data
+# Fully testing RNAcentral data
 
 The idea will be to see how well blat does with finding exact matches. I hope
 that it will do very well. Looking at what I've seen from human sequences it
@@ -69,7 +74,7 @@ should. To do well the methodology must find matches that we know exist and not
 find incorrect matches. Our cutoffs should be such that the if there is
 contamination or other issues we do not find a match.
 
-### Testing sequences which should match
+## Testing sequences which should match
 
 So the idea is to run BLAT searches on a simple genome for all sequences that
 have a known location. The goal is to produce a mapping that recovers the known
@@ -88,21 +93,41 @@ Suggested initial genomes:
 Seems that all the things that have mappings are euks. Maybe worth trying
 something with Bacterial sequences. But why are there not mappings for them?
 
-#### Bacterial Sequences
+### Bacterial Sequences
 
 It seems that the Bacterial genomes are a single sequence and the mapping is
-much simpler, it is just the position in the sequence. For some reason they
-are not being displayed as available, but they are really useful so we should
-test them out too. To that end I would suggest using E. coli for testing as
-well.
+much simpler, it is just the position in the sequence. For example,
+(https://www.arb-silva.de/browser/lsu/silva/U00096) provides several entries to
+RNAcentral, one of them being an LSU. For some reason the genome mappings are
+not being displayed as available, but they are really useful so we should test
+them out too. To that end I would suggest using E. coli for testing as well.
 
-### Testing sequences which should not match
+| Species                   | Avaiable  | Not Avaiable |
+|---------------------------|-----------|------------- |
+| Escherichia coli          | ? (7858)  | ? (0)        |
+
+## Testing sequences which should not match
 
 This approach should be tested with decoy (true negative) sequences. These can
 be sequences that have never been assigned to that species and may come from a
-different domain (ie use Bacterial to test Eukaryotes).
+different domain (ie use Bacterial to test Eukaryotes). Suggested Decoys:
+
+| Species                   | Decoys                                       |
+|---------------------------|----------------------------------------------|
+| Schizosaccharomyces pombe | Escherichia coli, Anopheles gambiae          |
+| Anopheles gambiae         | Escherichia coli, Anopheles gambiae          |
+| Escherichia coli          | Schizosaccharomyces pombe, Anopheles gambiae |
 
 It may also be a good idea to get some chimeric sequences from greengenes to
 see how this performs. I know they flag some sequences as chimeric. These are
 good decoy sequences as they show a much more subtle problem that we may not be
-able to deal with using simple approaches.
+able to deal with using simple approaches. This can only be applied to the
+bacterial set, unless there are other sources of chimeric data.
+
+# Overall
+
+Thus my idea is to try out BLAT with a few small, simple genomes. I think it
+will work pretty well to recover the mappings. The goal is to get the exact
+matches that are given and no extra matches. We will use a few decoys to test
+out possible mistakes. I suggest starting with Schizosaccharomyces pombe,
+Anopheles gambiae, and Escherichia coli. 
