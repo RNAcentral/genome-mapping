@@ -1,0 +1,108 @@
+# Evaluating BLAT
+
+BLAT promises to match sequences against a genome very quickly. In addition, it
+claims that it can unsplice a transcript to match it to the genome. If so it
+may be really useful for our purposes. 
+
+## Running sequences
+
+I am just picking some sequences that have a known mapping to the genome and
+seeing how the blat server performs. I am looking to see if it can map all
+things. I will only record the things that do not work.
+
+This [sequence](http://rnacentral.org/rna/URS00000E07AE/9606) only gives a partial match.
+Below are the results from the [blat server](http://genome.ucsc.edu/cgi-bin/hgBlat?command=start).
+
+## BLAT Search Results
+
+   ACTIONS      QUERY           SCORE START  END QSIZE IDENTITY CHRO STRAND  START    END      SPAN
+---------------------------------------------------------------------------------------------------
+browser details YourSeq           93     1    93    93 100.0%     8   +   66113367  66113459     93
+browser details YourSeq           76     1    93    93  91.2%    14   +   20683273  20683361     89
+browser details YourSeq           75     1    93    93  98.8%    14   -   20653099  20653192     94
+browser details YourSeq           74     1    93    93  98.7%    14   -   20663192  20663285     94
+browser details YourSeq           72     1    93    93  97.4%    14   -   20657464  20657557     94
+browser details YourSeq           72     1    93    93  97.4%    14   -   20659958  20660051     94
+browser details YourSeq           72     1    93    93  91.9%     8   +   66113988  66114076     89
+browser details YourSeq           71     1    93    93  92.3%     6   +   26568858  26568948     91
+browser details YourSeq           69     1    93    93  90.5%     2   +   27050782  27050870     89
+browser details YourSeq           68     1    93    93  89.2%     6   +   26594874  26594962     89
+browser details YourSeq           68     1    82    93  91.5%     2   +  218245826 218245907     82
+browser details YourSeq           66     1    93    93  89.2%     6   +   26575570  26575659     90
+browser details YourSeq           65     1    93    93  87.7%     6   +   26577104  26577192     89
+browser details YourSeq           42     1    48    93  93.8%     9   -   91147663  91147710     48
+browser details YourSeq           37     1    60    93  75.6%     6   +  101517390 101517440     51
+browser details YourSeq           35     1    37    93  97.3%     6   -  152505679 152505715     37
+browser details YourSeq           35     1    37    93  97.3%     2   -  161741288 161741324     37
+browser details YourSeq           34     2    37    93  97.3%     8   -   65697348  65697383     36
+browser details YourSeq           33     1    35    93  97.2%    11   +  131741770 131741804     35
+browser details YourSeq           32     1    34    93  97.1%  18_GL383567v1_alt   -      95095     95128     34
+browser details YourSeq           32     1    34    93  97.1%    18   -   50387288  50387321     34
+browser details YourSeq           32     2    37    93  94.5%  17_KI270908v1_alt   -     318518    318553     36
+browser details YourSeq           32     2    37    93  94.5%  17_GL000258v2_alt   -    1336534   1336569     36
+browser details YourSeq           32     2    37    93  94.5%  17_GL000258v2_alt   -     557545    557580     36
+browser details YourSeq           32     2    37    93  94.5%    17   -   45616382  45616417     36
+browser details YourSeq           32     2    37    93  94.5%  17_KI270908v1_alt   +     931472    931507     36
+browser details YourSeq           32     2    37    93  94.5%  17_GL000258v2_alt   +    1172410   1172445     36
+browser details YourSeq           32     2    37    93  94.5%    17   +   46229302  46229337     36
+browser details YourSeq           27     5    33    93  96.6%    14   -   20630479  20630507     29
+browser details YourSeq           24     6    33    93  92.9%    11   +  124700256 124700283     28
+browser details YourSeq           21    16    36    93 100.0%     1   -  180051243 180051263     21
+
+That is the first genomic position (8:66,113,367-66,113,459:1) is found, while
+the second match (AC090195.5:9,180-9,272:1)is not. In addition, we see an
+'extra' match (false positive?). This is only a subset of the sequence so we
+can ignore them I think.
+
+Are the coordinates in a normalized form? The two forms there look very
+different for example.
+
+This is probably worth trying out. I think I will install blat (at least in a
+docker container) and then use this to map some E. coli sequences to the
+correct locations. 
+
+## Fully testing RNAcentral data
+
+The idea will be to see how well blat does with finding exact matches. I hope
+that it will do very well. Looking at what I've seen from human sequences it
+should. To do well the methodology must find matches that we know exist and not
+find incorrect matches. Our cutoffs should be such that the if there is
+contamination or other issues we do not find a match.
+
+### Testing sequences which should match
+
+So the idea is to run BLAT searches on a simple genome for all sequences that
+have a known location. The goal is to produce a mapping that recovers the known
+locations (true positives).
+
+Suggested initial genomes:
+
+- [Schizosaccharomyces pombe](http://rnacentral.org/search?q=RNA%20AND%20TAXONOMY:%224896%22%20AND%20has_genomic_coordinates:%22True%22)
+- [Anopheles gambiae](http://rnacentral.org/search?q=RNA%20AND%20has_genomic_coordinates:%22True%22%20AND%20TAXONOMY:%227165%22)
+
+| Species                   | Avaiable  | Not Avaiable |
+|---------------------------|-----------|------------- |
+| Schizosaccharomyces pombe | 1771      | 447          |
+| Anopheles gambiae         | 3         | 70           |
+
+Seems that all the things that have mappings are euks. Maybe worth trying
+something with Bacterial sequences. But why are there not mappings for them?
+
+#### Bacterial Sequences
+
+It seems that the Bacterial genomes are a single sequence and the mapping is
+much simpler, it is just the position in the sequence. For some reason they
+are not being displayed as available, but they are really useful so we should
+test them out too. To that end I would suggest using E. coli for testing as
+well.
+
+### Testing sequences which should not match
+
+This approach should be tested with decoy (true negative) sequences. These can
+be sequences that have never been assigned to that species and may come from a
+different domain (ie use Bacterial to test Eukaryotes).
+
+It may also be a good idea to get some chimeric sequences from greengenes to
+see how this performs. I know they flag some sequences as chimeric. These are
+good decoy sequences as they show a much more subtle problem that we may not be
+able to deal with using simple approaches.

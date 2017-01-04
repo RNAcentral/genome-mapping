@@ -1,0 +1,36 @@
+# Genome Mapping
+
+The goal of this project is to map sequences where we do not know the
+genome level coordinates onto the correct genome.
+
+To start with I will begin with sequences that already have a known
+mapping. This will be the test set to see if the methodology works well.
+
+We have several kinds of sequences that require matching:
+
+- Exact sequences
+- Inexact sequences
+- Spliced Exact Sequences
+- Spliced Inexact Sequences
+
+These all require different levels of complexity and need to be treated
+differently.
+
+## Software to consider:
+
+- [[https://www.ncbi.nlm.nih.gov/pmc/articles/PMC187518/][BLAT]]
+- [[https://www.ncbi.nlm.nih.gov/pubmed/18976482][K-mer frequencies]]
+- [[https://www.ncbi.nlm.nih.gov/pubmed/15882139][Burrows-Wheeler transforms]]
+    [[https://www.ncbi.nlm.nih.gov/pubmed/15882139]]
+- [[https://www.ncbi.nlm.nih.gov/pubmed/18361760][Rare exact matches]]
+- [[http://dna.uio.no/swipe/][Swipe]]
+- [https://www.ncbi.nlm.nih.gov/pubmed/26334920][STAR]]
+- [[https://www.ncbi.nlm.nih.gov/pubmed/16542424][SIGMA]]
+- [[https://www.ncbi.nlm.nih.gov/pubmed/19627599][CSA]]
+
+## See Also:
+
+- <https://www.ncbi.nlm.nih.gov/pubmed/22149632>
+- <https://www.ncbi.nlm.nih.gov/pubmed/27294835>
+- <https://www.ncbi.nlm.nih.gov/pubmed/15826353>
+- <https://www.ncbi.nlm.nih.gov/pubmed/27832739>
