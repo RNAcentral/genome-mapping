@@ -2,13 +2,12 @@
 RNA sequences are correct. See Validator for details.
 """
 
-import copy
-
-from genome_mapping import data as gm
+from genome_mapping.intervals import Tree
 
 
 class Validator(object):
-    """A Validator is a class that is used to check how well a particular
+    """
+    A Validator is a class that is used to check how well a particular
     alignment tool (Mapper) and a particular set of cutoffs for 'good' matches
     (MappingFilter) do on a given data set. It is used to validate if our logic
     for mapping RNA sequences to a genome is good. Standard usage of this is to
@@ -21,7 +20,8 @@ class Validator(object):
     """
 
     def __init__(self, mapper, matcher):
-        """Create a new Validator.
+        """
+        Create a new Validator.
 
         Parameters
         ----------
@@ -38,7 +38,8 @@ class Validator(object):
         self.matcher = matcher
 
     def __call__(self, genome_file, target_file, given_expected):
-        """This will use the objects mapper to map all sequences in the
+        """
+        This will use the objects mapper to map all sequences in the
         target_file to the genome in the genome_file. It will then compare the
         mappings to the mappings in given_expected and produce a summary. Only
         the matches which are valid according to this objects matcher will be
@@ -65,20 +66,9 @@ class Validator(object):
             A set of counts summarizing the overall matches.
         """
 
-        counts = gm.SummaryCounts()
         mappings = self.mapper(genome_file, target_file)
         if mappings is None:
             raise ValueError("No mappings produced")
-        valid = self.matcher.filter_matches(mappings)
-
-        expected = copy.deepcopy(given_expected)
-        for mapping in valid:
-            key = mapping.accession
-            if key not in expected:
-                counts.extra_matches += 1
-            result = mapping.as_mapping()
-            if key in expected:
-                correct = expected.pop(key)
-                if correct == result:
-                    counts.valid_matches += len(correct)
-        return counts
+        valid = list(self.matcher.filter_matches(mappings))
+        tree = Tree(given_expected)
+        return tree.find_overlaps(valid)

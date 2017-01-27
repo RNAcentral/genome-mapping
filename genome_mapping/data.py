@@ -17,25 +17,20 @@ class SummaryCounts(object):
 
 @attr.s(frozen=True)
 class Mapping(object):
-    chromosome = attr.ib(validator=is_int)
+    chromosome = attr.ib(validator=is_str)
     start = attr.ib(validator=is_int)
     stop = attr.ib(validator=is_int)
     is_forward = attr.ib(validator=is_bool)
 
-    def __hash__(self):
-        return hash((self.chromosome, self.start, self.stop, self.is_forward))
-
 
 @attr.s()
 class SequenceResults(object):
-    md5 = attr.ib(validator=is_str)
-    mappings = attr.ib(validator=is_set, default=attr.Factory(set()))
+    name = attr.ib(validator=is_str)
+    # md5 = attr.ib(validator=is_str)
+    mappings = attr.ib(validator=is_set, default=attr.Factory(set), hash=False)
 
     def add(self, mapping):
         self.mappings.add(mapping)
-
-    def __hash__(self):
-        return hash(self.name)
 
 
 @attr.s(frozen=True)
@@ -48,7 +43,8 @@ class HitStats(object):
 
 @attr.s(frozen=True)
 class MappingHit(object):
-    chromosome = attr.ib(validator=is_int)
+    name = attr.ib(validator=is_str)
+    chromosome = attr.ib(validator=is_str)
     start = attr.ib(validator=is_int)
     stop = attr.ib(validator=is_int)
     is_forward = attr.ib(validator=is_bool)

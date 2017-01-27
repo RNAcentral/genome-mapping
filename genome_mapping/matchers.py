@@ -11,6 +11,17 @@ All other filters are expected to inherit from it.
 """
 
 import abc
+import sys
+
+from genome_mapping import utils as ut
+
+
+def known():
+    return ut.names_of_children(sys.modules[__name__], MappingFilter)
+
+
+def fetch(name):
+    return ut.get_child(sys.modules[__name__], MappingFilter, name)
 
 
 class MappingFilter(object):
@@ -19,6 +30,10 @@ class MappingFilter(object):
     provides other functionality.
     """
     __metaclass__ = abc.ABCMeta
+
+    @abc.abstractproperty
+    def name(self):
+        pass
 
     @abc.abstractmethod
     def is_valid_match(self, mapping):
@@ -52,7 +67,10 @@ class MappingFilter(object):
             List of mappings which are valid.
         """
 
-        return [m for m in mappings if self.is_valid_match(m)]
+        for mapping in mappings:
+            for match in mapping.mappings:
+                if self.is_valid_match(match):
+                    yield match
 
 
 class ExactMappingFilter(MappingFilter):
@@ -60,6 +78,8 @@ class ExactMappingFilter(MappingFilter):
     length in the target and query sequences and there be no gaps in either
     sequence. This is an 'exact' match.
     """
+
+    name = 'exact'
 
     def is_valid_match(self, mapping):
         """Check if the mapping is exact.
@@ -73,5 +93,5 @@ class ExactMappingFilter(MappingFilter):
         is_exact : bool
             True if the mapping is exact.
         """
-        return mapping.stats.hit_len == mapping.stats.query_len and \
-            mapping.identical == mapping.stats.hit_len
+        return mapping.stats.hit_length == mapping.stats.query_length and \
+            mapping.stats.identical == mapping.stats.hit_length
