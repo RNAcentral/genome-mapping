@@ -131,3 +131,42 @@ will work pretty well to recover the mappings. The goal is to get the exact
 matches that are given and no extra matches. We will use a few decoys to test
 out possible mistakes. I suggest starting with Schizosaccharomyces pombe,
 Anopheles gambiae, and Escherichia coli. 
+
+
+# Some issues
+
+## How does blat number sequences?
+
+I am trying S. pombe and I constantly see off by 1 errors for the lower
+endpoint (for things on the - strand) as compared to the given data. Does
+blat use 1 based inclusive indexes like is common, or is it something
+different?
+
+For example blat provides:
+
+```psl
+729	0	0	0	0	0	0	0	-	URS00002EC364_4896	729	0	729	I	5579133	1725051	1725780	1	729,	0,	1725051,
+```
+
+While the gff file shows:
+
+```gff
+I	RNAcentral	transcript	1725052	1725780	.	-	.	ID "CU329670.1:1725052..1725780:misc_RNA";Name "URS00002EC364";type "misc_RNA"
+I	RNAcentral	noncoding_exon	1725052	1725780	.	-	.	ID "CU329670.1:1725052..1725780:misc_RNA_exon1";Name "URS00002EC364";Parent "CU329670.1:1725052..1725780:misc_RNA";type "misc_RNA"
+```
+
+Also, when looking at things on the + strand I see some off by one errors as
+well. Is this just a problem with numbering or something else?
+
+For example, blat gives me:
+
+```psl
+47	5	0	0	0	0	0	0	+	URS0000105A8D_4896	863	602	654	I	5579133	4600594	4600646	1	52,	602,	4600594,
+```
+
+While the gff file contains:
+
+```gff
+I	RNAcentral	transcript	4599993	4600855	.	+	.	ID "CU329670.1:4599993..4600855:misc_RNA";Name "URS0000105A8D";type "misc_RNA"
+I	RNAcentral	noncoding_exon	4599993	4600855	.	+	.	ID "CU329670.1:4599993..4600855:misc_RNA_exon1";Name "URS0000105A8D";Parent "CU329670.1:4599993..4600855:misc_RNA";type "misc_RNA"
+```
