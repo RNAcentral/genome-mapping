@@ -11,7 +11,8 @@ from genome_mapping import matchers
 
 def write(counts):
     from pprint import pprint
-    grouped = it.groupby(counts, lambda o: o.location.name)
+    key = lambda o: o.location.name
+    grouped = it.groupby(sorted(counts, key=key), key=key)
     for name, group in grouped:
         overlaps = list(group)
         exact = any(g.is_exact() for g in overlaps)

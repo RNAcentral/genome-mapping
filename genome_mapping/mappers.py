@@ -177,5 +177,5 @@ class BlatMapper(Mapper):
         """
 
         with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
-            sp.check_call([self.path, genome_file, query_path, tmp.name])
+            sp.check_call([self.path, 'q=rna', genome_file, query_path, tmp.name])
             return list(SearchIO.parse(tmp.name, 'blat-psl'))

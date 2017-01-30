@@ -7,7 +7,7 @@ tags:
 
 BLAT promises to match sequences against a genome very quickly. In addition, it
 claims that it can unsplice a transcript to match it to the genome. If so it
-may be really useful for our purposes. 
+may be really useful for our purposes.
 
 # Running sequences
 
@@ -64,7 +64,7 @@ different for example.
 
 This is probably worth trying out. I think I will install blat (at least in a
 docker container) and then use this to map some E. coli sequences to the
-correct locations. 
+correct locations.
 
 # Fully testing RNAcentral data
 
@@ -130,7 +130,7 @@ Thus my idea is to try out BLAT with a few small, simple genomes. I think it
 will work pretty well to recover the mappings. The goal is to get the exact
 matches that are given and no extra matches. We will use a few decoys to test
 out possible mistakes. I suggest starting with Schizosaccharomyces pombe,
-Anopheles gambiae, and Escherichia coli. 
+Anopheles gambiae, and Escherichia coli.
 
 
 # Some issues
@@ -170,3 +170,196 @@ While the gff file contains:
 I	RNAcentral	transcript	4599993	4600855	.	+	.	ID "CU329670.1:4599993..4600855:misc_RNA";Name "URS0000105A8D";type "misc_RNA"
 I	RNAcentral	noncoding_exon	4599993	4600855	.	+	.	ID "CU329670.1:4599993..4600855:misc_RNA_exon1";Name "URS0000105A8D";Parent "CU329670.1:4599993..4600855:misc_RNA";type "misc_RNA"
 ```
+
+According to the biopython
+[documentation](http://biopython.org/DIST/docs/api/Bio.SearchIO.BlatIO-module.html)
+BLAT uses 0 based, half-open indexes, thus the offset from the gff file.
+
+
+# Results
+
+I've used this to try to find all sequences that have know matches and it does
+ok. Some sequences are not found. Using the current version I find these:
+
+```sh
+$ create_mapping.py data/pombe/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa data/pombe/has-coordinates.fasta data/pombe/Schizosaccharomyces_pombe.ASM294v2.gff3
+/Users/bsweeney/ebi/genome-mapping/.direnv/python-2.7.10/lib/python2.7/site-packages/Bio/SearchIO/__init__.py:211: BiopythonExperimentalWarning: Bio.SearchIO is an experimental submodule which may undergo significant changes prior to its future official release.
+  BiopythonExperimentalWarning)
+Loaded 12631379 letters in 6 sequences
+Searched 1979210 bases in 1771 sequences
+[Overlap(feature=<Feature transcript (I:3775854-3776756[+]) at 0x1068e1b90>, location=MappingHit(name='URS00004FE8F9_4896', chromosome='I', start=3765516, stop=3766419, is_forward=True, input_sequence=None, stats=HitStats(identical=903, gaps=0, query_length=903, hit_length=903)), shift=Shift(start=-10338, stop=-10337))]
+[Overlap(feature=<Feature transcript (II:1609703-1610790[+]) at 0x106991850>, location=MappingHit(name='URS0000013F15_4896', chromosome='II', start=1637091, stop=1638179, is_forward=True, input_sequence=None, stats=HitStats(identical=1088, gaps=0, query_length=1088, hit_length=1088)), shift=Shift(start=27388, stop=27389))]
+[Overlap(feature=<Feature transcript (III:29535-29898[+]) at 0x106798fd0>, location=MappingHit(name='URS000018D63E_4896', chromosome='III', start=2434215, stop=2434579, is_forward=True, input_sequence=None, stats=HitStats(identical=364, gaps=0, query_length=364, hit_length=364)), shift=Shift(start=2404680, stop=2404681))]
+[Overlap(feature=<Feature transcript (III:1702123-1702252[+]) at 0x106751110>, location=MappingHit(name='URS000054FEA4_4896', chromosome='III', start=1370023, stop=1370153, is_forward=True, input_sequence=None, stats=HitStats(identical=130, gaps=0, query_length=130, hit_length=130)), shift=Shift(start=-332100, stop=-332099))]
+[Overlap(feature=<Feature transcript (III:1107075-1107575[+]) at 0x1067c3b90>, location=MappingHit(name='URS00000C8FBA_4896', chromosome='III', start=1091418, stop=1091919, is_forward=True, input_sequence=None, stats=HitStats(identical=501, gaps=0, query_length=501, hit_length=501)), shift=Shift(start=-15657, stop=-15656))]
+[Overlap(feature=<Feature transcript (II:1636393-1636776[+]) at 0x106835f90>, location=MappingHit(name='URS00003793B1_4896', chromosome='II', start=1611105, stop=1611489, is_forward=True, input_sequence=None, stats=HitStats(identical=384, gaps=0, query_length=384, hit_length=384)), shift=Shift(start=-25288, stop=-25287))]
+[Overlap(feature=<Feature transcript (III:1091428-1091919[+]) at 0x1067c3110>, location=MappingHit(name='URS000060D544_4896', chromosome='III', start=1107074, stop=1107566, is_forward=True, input_sequence=None, stats=HitStats(identical=492, gaps=0, query_length=492, hit_length=492)), shift=Shift(start=15646, stop=15647))]
+[Overlap(feature=<Feature transcript (II:1614384-1615655[+]) at 0x1068b7750>, location=MappingHit(name='URS000054E50A_4896', chromosome='II', start=1632226, stop=1633498, is_forward=True, input_sequence=None, stats=HitStats(identical=1272, gaps=0, query_length=1272, hit_length=1272)), shift=Shift(start=17842, stop=17843))]
+[Overlap(feature=<Feature transcript (II:2129803-2130589[+]) at 0x106040b90>, location=MappingHit(name='URS00003D38FC_4896', chromosome='MTR', start=18746, stop=19533, is_forward=True, input_sequence=None, stats=HitStats(identical=787, gaps=0, query_length=787, hit_length=787)), shift=Shift(start=-2111057, stop=-2111056)),
+ Overlap(feature=<Feature transcript (II:2129803-2130589[+]) at 0x106040b90>, location=MappingHit(name='URS00003D38FC_4896', chromosome='II', start=2135739, stop=2136526, is_forward=True, input_sequence=None, stats=HitStats(identical=787, gaps=0, query_length=787, hit_length=787)), shift=Shift(start=5936, stop=5937))]
+[Overlap(feature=<Feature transcript (III:1093231-1093387[+]) at 0x1068255d0>, location=MappingHit(name='URS00003E79C3_4896', chromosome='III', start=1105606, stop=1105763, is_forward=True, input_sequence=None, stats=HitStats(identical=157, gaps=0, query_length=157, hit_length=157)), shift=Shift(start=12375, stop=12376))]
+[Overlap(feature=<Feature transcript (III:2451885-2452883[+]) at 0x105f7a650>, location=MappingHit(name='URS00002B25BC_4896', chromosome='III', start=11259, stop=12260, is_forward=True, input_sequence=None, stats=HitStats(identical=1001, gaps=0, query_length=1001, hit_length=1001)), shift=Shift(start=-2440626, stop=-2440623)),
+ Overlap(feature=<Feature transcript (III:2451883-2452883[+]) at 0x1069ca850>, location=MappingHit(name='URS00002B25BC_4896', chromosome='III', start=11259, stop=12260, is_forward=True, input_sequence=None, stats=HitStats(identical=1001, gaps=0, query_length=1001, hit_length=1001)), shift=Shift(start=-2440624, stop=-2440623)),
+ Overlap(feature=<Feature transcript (III:2451885-2452883[+]) at 0x105f7a650>, location=MappingHit(name='URS00002B25BC_4896', chromosome='III', start=22129, stop=23130, is_forward=True, input_sequence=None, stats=HitStats(identical=1001, gaps=0, query_length=1001, hit_length=1001)), shift=Shift(start=-2429756, stop=-2429753)),
+ Overlap(feature=<Feature transcript (III:2451883-2452883[+]) at 0x1069ca850>, location=MappingHit(name='URS00002B25BC_4896', chromosome='III', start=22129, stop=23130, is_forward=True, input_sequence=None, stats=HitStats(identical=1001, gaps=0, query_length=1001, hit_length=1001)), shift=Shift(start=-2429754, stop=-2429753))]
+[Overlap(feature=<Feature transcript (III:1105609-1105766[+]) at 0x1060ebd90>, location=MappingHit(name='URS0000219790_4896', chromosome='III', start=1093227, stop=1093385, is_forward=True, input_sequence=None, stats=HitStats(identical=158, gaps=0, query_length=158, hit_length=158)), shift=Shift(start=-12382, stop=-12381))]
+[Overlap(feature=<Feature transcript (I:3753730-3754811[+]) at 0x10694a090>, location=MappingHit(name='URS00002B3C47_4896', chromosome='I', start=3788296, stop=3789378, is_forward=True, input_sequence=None, stats=HitStats(identical=1082, gaps=0, query_length=1082, hit_length=1082)), shift=Shift(start=34566, stop=34567))]
+[Overlap(feature=<Feature transcript (I:3789585-3789948[+]) at 0x10675e550>, location=MappingHit(name='URS00005FAF9E_4896', chromosome='I', start=3753159, stop=3753523, is_forward=True, input_sequence=None, stats=HitStats(identical=364, gaps=0, query_length=364, hit_length=364)), shift=Shift(start=-36426, stop=-36425))]
+[Overlap(feature=<Feature transcript (II:1619340-1619803[+]) at 0x106040710>, location=MappingHit(name='URS00001AE569_4896', chromosome='II', start=1628611, stop=1629075, is_forward=True, input_sequence=None, stats=HitStats(identical=464, gaps=0, query_length=464, hit_length=464)), shift=Shift(start=9271, stop=9272))]
+[Overlap(feature=<Feature transcript (II:1613127-1613220[+]) at 0x10687dcd0>, location=MappingHit(name='URS0000221087_4896', chromosome='II', start=1634661, stop=1634755, is_forward=True, input_sequence=None, stats=HitStats(identical=94, gaps=0, query_length=94, hit_length=94)), shift=Shift(start=21534, stop=21535))]
+[Overlap(feature=<Feature transcript (I:3775473-3775847[+]) at 0x1060eb590>, location=MappingHit(name='URS0000385682_4896', chromosome='I', start=3766425, stop=3766800, is_forward=True, input_sequence=None, stats=HitStats(identical=375, gaps=0, query_length=375, hit_length=375)), shift=Shift(start=-9048, stop=-9047))]
+[Overlap(feature=<Feature transcript (II:1619808-1620391[+]) at 0x106002a50>, location=MappingHit(name='URS0000597901_4896', chromosome='II', start=1628023, stop=1628607, is_forward=True, input_sequence=None, stats=HitStats(identical=584, gaps=0, query_length=584, hit_length=584)), shift=Shift(start=8215, stop=8216))]
+```
+
+This shows there are a few (18) sequences which are not found using BLAT. Most
+of these are long (> 100nt). I didn't believe this so I wrote this simple program
+to look for the shortest one (URS0000221087):
+
+```python
+from Bio.SeqIO import parse
+import Bio.SeqIO
+
+sequences = parse('data/pombe/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa',
+                  'fasta')
+
+targets = [
+    '''
+UAUAAAAUAUAUAUAUAUAUAUAUAUACAUUCAUUAUAUACAUUAUAUACAUUAUACUUGAACACCCCAAUUGGCUAUAUAAUUAGAGUCAGUA
+    ''',
+
+]
+
+for sequence in sequences:
+    rev = sequence.reverse_complement()
+    for target in targets:
+        dna = target.replace('U', 'T').strip()
+        for seq in [sequence, rev]:
+            location = seq.seq.find(dna)
+            if location != -1:
+                print(location)
+                print(sequence)
+                print(dna)
+```
+
+which produces
+
+```
+1613126
+ID: II
+Name: II
+Description: II dna:chromosome chromosome:ASM294v2:II:1:4539804:1 REF
+Number of features: 0
+Seq('GATCTCGCAACTCTTAATAAAGCTAATTCCTGCTAATTCGCTATACACTAAATC...TTT', SingleLetterAlphabet())
+TATAAAATATATATATATATATATATACATTCATTATATACATTATATACATTATACTTGAACACCCCAATTGGCTATATAATTAGAGTCAGTA
+2905049
+ID: II
+Name: II
+Description: II dna:chromosome chromosome:ASM294v2:II:1:4539804:1 REF
+Number of features: 0
+Seq('GATCTCGCAACTCTTAATAAAGCTAATTCCTGCTAATTCGCTATACACTAAATC...TTT', SingleLetterAlphabet())
+TATAAAATATATATATATATATATATACATTCATTATATACATTATATACATTATACTTGAACACCCCAATTGGCTATATAATTAGAGTCAGTA
+1090588
+ID: III
+Name: III
+Description: III dna:chromosome chromosome:ASM294v2:III:1:2452883:1 REF
+Number of features: 0
+Seq('GATCAGCCAAAATGGCTGATCCAGCTATTTAGCAGGTTAAGGTCTCGTTCGTTA...GGG', SingleLetterAlphabet())
+TATAAAATATATATATATATATATATACATTCATTATATACATTATATACATTATACTTGAACACCCCAATTGGCTATATAATTAGAGTCAGTA
+```
+
+In other words we can find the sequence with a trivial search. The first hit is
+the 'correct' one.
+
+The results for just that sequence are:
+
+```python
+[Overlap(feature=<Feature transcript (II:1613127-1613220[+]) at 0x10687dcd0>,
+         location=MappingHit(name='URS0000221087_4896',
+                             chromosome='II',
+                             start=1634661,
+                             stop=1634755,
+                             is_forward=True,
+                             input_sequence=None,
+                             stats=HitStats(identical=94, gaps=0, query_length=94, hit_length=94)),
+                             shift=Shift(start=21534, stop=21535))
+]
+```
+
+This appears to find the hit in a very wrong place. The place is not found
+using the trivial search at all.
+
+If I look at this sequence, as well as several others that are not found they
+look really repetitive. BLAT could be doing something clever to mask these
+somehow. Looking at BLAT's help:
+
+```
+$ blat
+blat - Standalone BLAT v. 36 fast sequence search command line tool
+usage:
+   blat database query [-ooc=11.ooc] output.psl
+   [...]
+   -mask=type     Mask out repeats.  Alignments won't be started in masked region
+                  but may extend through it in nucleotide searches.  Masked areas
+                  are ignored entirely in protein or translated searches. Types are:
+                    lower - mask out lower-cased sequence
+                    upper - mask out upper-cased sequence
+                    out   - mask according to database.out RepeatMasker .out file
+                    file.out - mask database according to RepeatMasker file.out
+   -qMask=type    Mask out repeats in query sequence.  Similar to -mask above, but
+                  for query rather than target sequence.
+```
+
+I see this masking options. This could have something to do with it. So if we
+try to search with just the sequence:
+
+
+```sh
+query=$(mktemp)
+output=$(mktemp)
+cat > $query <<EOF
+>URS0000221087
+UAUAAAAUAUAUAUAUAUAUAUAUAUACAUUCAUUAUAUACAUUAUAUACAUUAUACUUGAACACCCCAAUUGGCUAUA
+UAAUUAGAGUCAGUA
+EOF
+blat -q=rna data/pombe/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa $query $output
+cat $output
+```
+
+we do in fact find it:
+
+```
+Loaded 12631379 letters in 6 sequences
+Searched 94 bases in 1 sequences
+psLayout version 3
+
+match	mis- 	rep. 	N's	Q gap	Q gap	T gap	T gap	strand	Q        	Q   	Q    	Q  	T        	T   	T    	T  	block	blockSizes 	qStarts	 tStarts
+     	match	match	   	count	bases	count	bases	      	name     	size	start	end	name     	size	start	end	count
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+94	0	0	0	0	0	0	0	+	URS0000221087	94	0	94	III	2452883	1090588	1090682	1	94,	0,	1090588,
+94	0	0	0	0	0	0	0	+	URS0000221087	94	0	94	II	4539804	1613126	1613220	1	94,	0,	1613126,
+94	0	0	0	0	0	1	300	+	URS0000221087	94	0	94	I	5579133	3756056	3756450	2	6,88,	0,6,	3756056,3756362,
+93	1	0	0	0	0	0	0	-	URS0000221087	94	0	94	III	2452883	1108311	1108405	1	94,	0,	1108311,
+94	0	0	0	0	0	0	0	-	URS0000221087	94	0	94	II	4539804	1634661	1634755	1	94,	0,	1634661,
+94	0	0	0	0	0	1	18	-	URS0000221087	94	0	94	I	5579133	3785823	3785935	2	44,50,	0,44,	3785823,3785885,
+```
+
+It is the second hit. There are also several other exact matches, where the
+second to last one is the one that the program selects. This must be a bug in
+my code. Let's compare the data to see if there is something different between
+the correct one and the selected one, just to be sure.
+
+```
+match	mis- 	rep. 	N's	Q gap	Q gap	T gap	T gap	strand	Q        	Q   	Q    	Q  	T        	T   	T    	T  	block	blockSizes 	qStarts	 tStarts
+     	match	match	   	count	bases	count	bases	      	name     	size	start	end	name     	size	start	end	count
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+94	0	0	0	0	0	0	0	+	URS0000221087	94	0	94	II	4539804	1613126	1613220	1	94,	0,	1613126,
+94	0	0	0	0	0	0	0	-	URS0000221087	94	0	94	II	4539804	1634661	1634755	1	94,	0,	1634661,
+```
+
+The only difference I see is the `+` vs `-` strand. I don't see why my code
+would exclude it, but it must be a bug somewhere. That's why I should always
+write tests. I feel like this is some sort of select only last match problem,
+but I see that other sequences have more than one match, so I doubt it.
+
+I tried checking of things are ordered and they are. Ok I guess I just have to
+write tests and the like now.
