@@ -34,3 +34,24 @@ differently.
 - <https://www.ncbi.nlm.nih.gov/pubmed/27294835>
 - <https://www.ncbi.nlm.nih.gov/pubmed/15826353>
 - <https://www.ncbi.nlm.nih.gov/pubmed/27832739>
+
+## Related Problems
+
+There are some related problems that we could draw inspiration or utilities
+from.
+
+### Variant calling
+
+Variant calling seems to be a similar problem. That said those programs don't
+appear to deal with things like introns as they assume good matches (or ones
+with fixed gaps). Could be useful for exact matches though. Plus there are well
+documented workflows for these so it is useful.
+
+Also, this method does a 'pile up analysis'. This seems to be about finding
+locations where lots of highly similar sequences align. This could be very
+useful for the longer term goal of finding a canonical set of ncRNA. We could
+use this analysis to deal with the fact that there are many sequences that are
+very similar. Instead of aligning each to each other we can align each to the
+genome and find where they pile up. These locations would then be the locations
+of the canonical ncRNA's. Maybe. This would only work with things the rRNA
+where we have lots of sequences, for other sequences this likely wouldn't work.
