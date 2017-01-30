@@ -1,0 +1,23 @@
+# Genome Mapping
+
+This is a repo for me to explore how to map generic RNA sequences to a genome.
+The general idea is that to use a variety of alignment programs for each type
+of sequence and organism to properly create a mapping.
+
+# Dependencies
+
+This is run as a Docker image. So Docker should handle all issues itself. If
+you want to run this outside of docker, you should read the Dockerfile to see
+what is required.
+
+
+# Usage
+
+Run docker and attach to the running process
+
+```sh
+$ docker-compose up --build
+$ docker ps
+# $pid => Some pid
+$ docker attach $pid
+```
