@@ -71,4 +71,4 @@ class Validator(object):
             raise ValueError("No mappings produced")
         valid = list(self.matcher.filter_matches(mappings))
         tree = Tree(given_expected)
-        return tree.find_overlaps(valid)
+        return tree.find_correct_overlaps(valid)

@@ -48,6 +48,7 @@ class MappingHit(object):
     start = attr.ib(validator=is_int)
     stop = attr.ib(validator=is_int)
     is_forward = attr.ib(validator=is_bool)
+    input_sequence = attr.ib()
     stats = attr.ib(validator=attr.validators.instance_of(HitStats))
 
     def as_mapping(self):

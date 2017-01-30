@@ -1,3 +1,4 @@
+import re
 import collections as coll
 
 import attr
@@ -18,11 +19,12 @@ class Shift(object):
 
     @classmethod
     def from_match(cls, match, feature):
-        return cls(start=match.start - feature.begin,
-                   stop=match.start - feature.end)
+        return cls(start=match.start - feature.start,
+                   stop=match.stop - feature.end)
 
     def is_exact(self):
-        return not self.start and not self.stop
+        return (not self.start and not self.stop) or \
+            (self.start == -1 and not self.stop)
 
 
 @attr.s()
@@ -55,6 +57,7 @@ class Tree(object):
         self.locations = coll.defaultdict(list)
         for feature in self.features():
             for name in feature.attributes['Name']:
+                name = re.sub('_\d+$', '', name)
                 self.locations[name].append(feature)
 
     def features(self):
@@ -74,19 +77,32 @@ class Tree(object):
         return matches
 
     def find(self, upi):
+        upi = re.sub('_\d+$', '', upi)
         return self.locations[upi]
+
+    def find_correct_overlaps(self, matches):
+        overlaps = []
+        for match in matches:
+            correct = self.find(match.name)
+            if not correct:
+                raise ValueError("No correct locations for %s", match.name)
+            overlaps.extend(Overlap.from_match(match, c) for c in correct)
+        return overlaps
 
     def find_overlaps(self, matches):
         overlaps = []
         for match in matches:
-            seen = set()
-            for overlap in self.search(match.start, match.stop):
-                seen.add(overlap.feature.id)
-                overlaps.append(overlap)
+            correct = self.find(match.name)
+            if not correct:
+                raise ValueError("No correct locations for %s", match.name)
 
-            for correct in self.find(match.name):
-                if correct.id in seen:
-                    continue
-                overlaps.append(Overlap.from_match(match, correct))
+            correct_overlaps = [Overlap.from_match(match, c) for c in correct]
+            overlaps.extend(correct_overlaps)
+
+            if all(o.is_exact() for o in correct_overlaps):
+                continue
+
+            for overlap in self.search(match.start, match.stop):
+                overlaps.append(overlap)
 
         return overlaps

@@ -27,6 +27,9 @@ def fetch(name):
 
 
 class Mapper(object):
+    def lookup_sequence(self, result):
+        pass
+
     def create_mappings(self, matches):
         """Create the mappings from the given raw data. The mapping objects in
         genome_mapping.data are clearer (to me at least) so I would rather use
@@ -52,13 +55,14 @@ class Mapper(object):
             if result.id not in results:
                 results[result.id] = gm.SequenceResults(name=result.id)
             current = results[result.id]
+            sequence = self.lookup_sequence(result)
+
             for hit in result:
                 for fragment in hit:
                     stats = gm.HitStats(identical=fragment.ident_num,
                                         gaps=fragment.gapopen_num,
                                         query_length=result.seq_len,
-                                        hit_length=fragment.hit_end - fragment.hit_start,
-                                        )
+                                        hit_length=fragment.hit_end - fragment.hit_start)
                     current.add(
                         gm.MappingHit(
                             name=result.id,
@@ -66,6 +70,7 @@ class Mapper(object):
                             start=fragment.hit_start,
                             stop=fragment.hit_end,
                             is_forward=fragment[0].hit_strand == 1,
+                            input_sequence=sequence,
                             stats=stats))
         return results.values()
 
@@ -89,10 +94,6 @@ class Mapper(object):
             A list of mapping objects.
         """
 
-        # filtered = self.filter_sequences(sequences)
-        # if not filtered:
-        #     return None
-        # query_path = self.create_query(filtered)
         output = self.run(genome_file, query_file)
         return self.create_mappings(output)
 

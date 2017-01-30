@@ -17,14 +17,14 @@ from genome_mapping import utils as ut
 
 
 def known():
-    return ut.names_of_children(sys.modules[__name__], MappingFilter)
+    return ut.names_of_children(sys.modules[__name__], Base)
 
 
 def fetch(name):
-    return ut.get_child(sys.modules[__name__], MappingFilter, name)
+    return ut.get_child(sys.modules[__name__], Base, name)
 
 
-class MappingFilter(object):
+class Base(object):
     """This is the base class that all other mappers should inherit from. It
     does not contain any logic to detect if a match is valid or not, but
     provides other functionality.
@@ -73,7 +73,7 @@ class MappingFilter(object):
                     yield match
 
 
-class ExactMappingFilter(MappingFilter):
+class ExactMappingFilter(Base):
     """This is a simple filter which requires that the mapping have the same
     length in the target and query sequences and there be no gaps in either
     sequence. This is an 'exact' match.
@@ -94,4 +94,5 @@ class ExactMappingFilter(MappingFilter):
             True if the mapping is exact.
         """
         return mapping.stats.hit_length == mapping.stats.query_length and \
+            mapping.stats.gaps == 0 and \
             mapping.stats.identical == mapping.stats.hit_length
