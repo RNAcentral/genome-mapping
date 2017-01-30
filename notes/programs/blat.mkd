@@ -363,3 +363,85 @@ but I see that other sequences have more than one match, so I doubt it.
 
 I tried checking of things are ordered and they are. Ok I guess I just have to
 write tests and the like now.
+
+Turns out the issue was that I was not properly setting the options, notably I
+didn't include the -q=rna option for some reason. This is now fixed. In doing so
+we no longer miss any(!) correct mappings. This is great news as now we can use
+BLAT in simple cases. I haven't tested anything with introns or complex things
+but we can use it in basic stuff which is great.
+
+One important issue left is what to do with 'extra' mappings. For example the
+sequence tested above will have the correct mapping as well as another that is
+in the 'wrong' place. I need to determine how common these are and then what to
+do, if anything about them.
+
+- Extra mappings:
+    - These are places where the sequence of a known gene appears again. 
+
+    - Long ones are the most problematic. What does it mean that an LSU appears > 1 time. 
+
+    - Possible solutions:
+        - Exclude those that lack promoters by some model.
+        - Exclude those that appear to be psuedogenes
+
+    - Both require fairly advanced models of the genome of each organims. May
+      only be possible in well studied organisms. Probably just accept all
+      matches for unimportant organisms, otherwise apply the model to select
+      or reject.
+
+    - Where to find such models?
+      - Are they commonly created?
+      - Can we create them?
+        - Should we?
+      - MOD probably have them.
+      - Use gene annotations as well to find them?
+        - Is this circular -- are only the things with locations in genes?
+      - Are they tuned for just protein coding genes?
+
+    - What if there is only 1 match?
+        - Should we exclude based upon a model in this case?
+            - Probably not
+        - Not excluding will probably annotate pseudogenes and the like.
+
+Possible workflow:
+
+1. Find all genomic locations
+2. If have gene models:
+    - Filter locations by those that fall in model
+        * Maybe use this if we have several matches keep those in a gene, unless
+        none are them keep them all?
+        * Just note those that are in a gene model if possible?
+    - Otherwise keep all matches
+
+Classes of positions:
+
+- Given:
+    - The one we have been given.
+- Inferred:
+    - No Known Gene Model
+        - No way to filter further
+    - With Gene Model Support
+        - Fits inside gene model, most trustworthy
+    - Conflicts with Gene Model
+        - Does not fit in gene model, least trustworthy
+
+May want to note all these cases. Probably add them to the genome track and let
+the user see them. We should always run the sequences with a given location
+through the process to evaluate how the process does. Also, we should show
+these matches and annotate them with the information about the class.
+
+Using gene model suggests showing gene model track as well. This is getting
+very complicated and may not be a good idea. On the other hand this is the most
+informative approach. People don't really want to be overwhelmed with this, so
+sane defaults are the key.
+
+Default to hiding things which are not in a gene model, and when there is no
+model show everything.
+
+Looking at pombe shows this may be a problem. From the numbers it appears that
+the genes with a location are the only ones annotated. There are no models
+which predict the presence of a gene. We would need predictions and not
+annotations. Building good models is likely to be difficult to impossible (can
+we use one model for all types of RNA, even small things? What if there are no
+annotated locations?) and quite time consuming. Simply adding this information
+to a track may be best. Only distinguish inferred and given on the pages.
