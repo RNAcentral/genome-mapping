@@ -177,5 +177,19 @@ class BlatMapper(Mapper):
         """
 
         with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
-            sp.check_call([self.path, 'q=rna', genome_file, query_path, tmp.name])
+            cmd = [self.path, 'q=rna', genome_file, query_path, tmp.name]
+            with open('/dev/null', 'wb') as null:
+                sp.check_call(cmd, stdout=null)
             return list(SearchIO.parse(tmp.name, 'blat-psl'))
+
+
+# class TrivialMapper(Mapper):
+#     name = 'trivial'
+
+#     def run(self, genome_file, query_path):
+#         matches = []
+#         for chromosome in SeqIO.parse(genome_file, 'fasta'):
+#             for sequence in SeqIO.parse(query_path, 'fasta'):
+#                 location = chromsome.find(sequence)
+#                 if location:
+#                     matches.append(

@@ -1,4 +1,5 @@
 import re
+import operator as op
 import collections as coll
 
 import attr
@@ -22,9 +23,16 @@ class Shift(object):
         return cls(start=match.start - feature.start,
                    stop=match.stop - feature.end)
 
+    @classmethod
+    def cross_chromosome(cls):
+        return cls(start=float('-inf'), stop=float('inf'))
+
+    @property
+    def total(self):
+        return abs(self.start) + abs(self.stop)
+
     def is_exact(self):
-        return (not self.start and not self.stop) or \
-            (self.start == -1 and not self.stop)
+        return not self.start and not self.stop
 
 
 @attr.s()
@@ -41,26 +49,41 @@ class Overlap(object):
 
     @classmethod
     def from_match(cls, match, feature):
+        shift = Shift.from_match(match, feature)
+        if match.chromosome != feature.seqid:
+            shift = Shift.cross_chromosome()
+
         return cls(feature=feature,
                    location=match,
-                   shift=Shift.from_match(match, feature))
+                   shift=shift)
 
     def is_exact(self):
         return self.shift.is_exact()
 
 
+class OneBased(object):
+    def normalize(self, start, stop):
+        return (start - 1, stop)
+
+
 class Tree(object):
-    def __init__(self, filename):
+    def __init__(self, filename, coordinates=OneBased()):
         self.db = gff.create_db(filename, ':memory:')
-        intervals = (Interval(f.start, f.end, f) for f in self.features())
-        self.tree = IntervalTree(intervals)
+        self.trees = coll.defaultdict(list)
         self.locations = coll.defaultdict(list)
-        for feature in self.features():
+        for (start, stop), feature in self.features(coordinates):
+            self.trees[feature.seq].append(Interval(start, stop, feature))
             for name in feature.attributes['Name']:
                 name = re.sub('_\d+$', '', name)
                 self.locations[name].append(feature)
 
-    def features(self):
+        for chromosome, intervals in self.trees.items():
+            self.trees[chromosome] = IntervalTree(intervals)
+
+        # intervals = (Interval(f.start, f.end, f) for f in self.features())
+        # self.tree = IntervalTree(intervals)
+
+    def intervals(self, coordinates):
         seen = set()
         for feature in self.db.all_features():
             name = feature.attributes['Name'][0]
@@ -68,7 +91,8 @@ class Tree(object):
             if key in seen:
                 continue
             seen.add(key)
-            yield feature
+
+            yield coordinates.normalize(feature.start, feature.stop), feature
 
     def search(self, start, stop):
         matches = set()
@@ -86,23 +110,20 @@ class Tree(object):
             correct = self.find(match.name)
             if not correct:
                 raise ValueError("No correct locations for %s", match.name)
-            overlaps.extend(Overlap.from_match(match, c) for c in correct)
+            correct = [Overlap.from_match(match, c) for c in correct]
+            overlaps.append(min(correct, key=lambda o: o.shift.total))
         return overlaps
 
-    def find_overlaps(self, matches):
+    def find_all_overlaps(self, matches):
         overlaps = []
+        shift = op.attrgetter('shift')
         for match in matches:
             correct = self.find(match.name)
-            if not correct:
-                raise ValueError("No correct locations for %s", match.name)
-
-            correct_overlaps = [Overlap.from_match(match, c) for c in correct]
-            overlaps.extend(correct_overlaps)
-
-            if all(o.is_exact() for o in correct_overlaps):
-                continue
-
-            for overlap in self.search(match.start, match.stop):
-                overlaps.append(overlap)
-
+            choosable = [Overlap.from_match(match, c) for c in correct]
+            choosable.extend(self.search(match.start, match.stop))
+            nearest = min(choosable, key=shift)
+            overlaps.append(nearest)
         return overlaps
+
+    def find_other_overlaps(self, matches):
+        pass

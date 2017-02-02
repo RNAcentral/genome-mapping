@@ -96,3 +96,10 @@ class ExactMappingFilter(Base):
         return mapping.stats.hit_length == mapping.stats.query_length and \
             mapping.stats.gaps == 0 and \
             mapping.stats.identical == mapping.stats.hit_length
+
+
+class PassThroughFilter(Base):
+    name = 'passthrough'
+
+    def is_valid_match(self, mapping):
+        return True
