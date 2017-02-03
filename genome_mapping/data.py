@@ -1,59 +1,67 @@
 import attr
 
-is_int = attr.validators.instance_of(int)
-is_bool = attr.validators.instance_of(bool)
-is_str = attr.validators.instance_of(str)
-is_set = attr.validators.instance_of(set)
+RESULT_TYPE = frozenset(['exact', 'additional', 'missing', 'inexact'])
 
-
-@attr.s()
-class SummaryCounts(object):
-    valid_matches = attr.ib(default=0)
-    invalid_matches = attr.ib(default=0)
-    extra_matches = attr.ib(default=0)
-    missing_matches = attr.ib(default=0)
-    incomplete_matches = attr.ib(default=0)
+IS_INT = attr.validators.instance_of(int)
+IS_FLOAT = attr.validators.instance_of(float)
+IS_BOOL = attr.validators.instance_of(bool)
+IS_STR = attr.validators.instance_of(basestring)
+IS_SET = attr.validators.instance_of(set)
 
 
 @attr.s(frozen=True)
-class Mapping(object):
-    chromosome = attr.ib(validator=is_str)
-    start = attr.ib(validator=is_int)
-    stop = attr.ib(validator=is_int)
-    is_forward = attr.ib(validator=is_bool)
-
-
-@attr.s()
-class SequenceResults(object):
-    name = attr.ib(validator=is_str)
-    # md5 = attr.ib(validator=is_str)
-    mappings = attr.ib(validator=is_set, default=attr.Factory(set), hash=False)
-
-    def add(self, mapping):
-        self.mappings.add(mapping)
+class Stats(object):
+    identical = attr.ib(validator=IS_INT)
+    identity = attr.ib(validator=IS_FLOAT)
+    gaps = attr.ib(validator=IS_INT)
+    query_length = attr.ib(validator=IS_INT)
+    hit_length = attr.ib(validator=IS_INT)
 
 
 @attr.s(frozen=True)
-class HitStats(object):
-    identical = attr.ib(validator=is_int)
-    gaps = attr.ib(validator=is_int)
-    query_length = attr.ib(validator=is_int)
-    hit_length = attr.ib(validator=is_int)
-
-
-@attr.s(frozen=True)
-class MappingHit(object):
-    name = attr.ib(validator=is_str)
-    chromosome = attr.ib(validator=is_str)
-    start = attr.ib(validator=is_int)
-    stop = attr.ib(validator=is_int)
-    is_forward = attr.ib(validator=is_bool)
+class Hit(object):
+    name = attr.ib(validator=IS_STR)
+    chromosome = attr.ib(validator=IS_STR)
+    start = attr.ib(validator=IS_INT)
+    stop = attr.ib(validator=IS_INT)
+    is_forward = attr.ib(validator=IS_BOOL)
     input_sequence = attr.ib()
-    stats = attr.ib(validator=attr.validators.instance_of(HitStats))
+    stats = attr.ib(validator=attr.validators.instance_of(Stats))
 
-    def as_mapping(self):
-        return Mapping(chromosome=self.chromosome,
-                       start=self.start,
-                       stop=self.stop,
-                       is_forward=self.is_forward
-                       )
+
+@attr.s(frozen=True)
+class Shift(object):
+    start = attr.ib()
+    stop = attr.ib()
+
+    @classmethod
+    def cross_chromosome(cls):
+        return cls(start=float('-inf'), stop=float('inf'))
+
+    @property
+    def total(self):
+        return abs(self.start) + abs(self.stop)
+
+    @property
+    def type(self):
+        if not self.start and not self.stop:
+            return 'exact'
+        # if self.start > 0 and self.stop < 0:
+        #     return 'within'
+        return 'inexact'
+
+
+@attr.s(frozen=True)
+class Comparision(object):
+    hit = attr.ib(validator=attr.validators.instance_of(Hit))
+    feature = attr.ib()
+    shift = attr.ib(validator=attr.validators.instance_of(Shift))
+
+    @property
+    def type(self):
+        if not self.feature:
+            return 'additional'
+        if not self.hit:
+            return 'missing'
+        if self.hit and self.feature:
+            return self.shift.type()

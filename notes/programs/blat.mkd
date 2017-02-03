@@ -365,17 +365,17 @@ I tried checking of things are ordered and they are. Ok I guess I just have to
 write tests and the like now.
 
 Turns out the issue was that I was not properly setting the options, notably I
-didn't include the -q=rna option for some reason. This is now fixed. In doing so
-we no longer miss any(!) correct mappings. This is great news as now we can use
-BLAT in simple cases. I haven't tested anything with introns or complex things
-but we can use it in basic stuff which is great.
+didn't include the `-q=rna` option for some reason. This is now fixed. In doing
+so we no longer miss any(!) correct mappings. This is great news as now we can
+use BLAT in simple cases. I haven't tested anything with introns or complex
+things but we can use it in basic stuff which is great.
 
 One important issue left is what to do with 'extra' mappings. For example the
 sequence tested above will have the correct mapping as well as another that is
 in the 'wrong' place. I need to determine how common these are and then what to
 do, if anything about them.
 
-- Extra mappings:
+- Extra mappings
     - These are places where the sequence of a known gene appears again. 
 
     - Long ones are the most problematic. What does it mean that an LSU appears > 1 time. 

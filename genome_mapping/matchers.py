@@ -36,7 +36,7 @@ class Base(object):
         pass
 
     @abc.abstractmethod
-    def is_valid_match(self, mapping):
+    def is_valid_hit(self, hit):
         """This is the key method all inheriting classes will have to
         implement, it should check if the given mapping is 'vaild' for some
         criteria.
@@ -53,7 +53,7 @@ class Base(object):
         """
         pass
 
-    def filter_matches(self, mappings):
+    def filter_matches(self, hits):
         """Filter all matches to only those that are valid.
 
         Parameters
@@ -67,10 +67,9 @@ class Base(object):
             List of mappings which are valid.
         """
 
-        for mapping in mappings:
-            for match in mapping.mappings:
-                if self.is_valid_match(match):
-                    yield match
+        for hit in hits:
+            if self.is_valid_hit(hit):
+                yield hit
 
 
 class ExactMappingFilter(Base):
@@ -81,25 +80,35 @@ class ExactMappingFilter(Base):
 
     name = 'exact'
 
-    def is_valid_match(self, mapping):
+    def is_valid_hit(self, hit):
         """Check if the mapping is exact.
 
         Parameters
         ----------
-        mapping : Mapping
+        hit : Mapping
         
         Returns
         -------
         is_exact : bool
             True if the mapping is exact.
         """
-        return mapping.stats.hit_length == mapping.stats.query_length and \
-            mapping.stats.gaps == 0 and \
-            mapping.stats.identical == mapping.stats.hit_length
+        return hit.stats.hit_length == hit.stats.query_length and \
+            hit.stats.gaps == 0 and \
+            hit.stats.identical == hit.stats.hit_length
+
+
+class PercentIdentityFilter(Base):
+    name = 'identity'
+
+    def __init__(self, cutoff=99.0):
+        self.cutoff = cutoff
+
+    def is_valid_hit(self, hit):
+        return hit.stats.identity >= self.cutoff
 
 
 class PassThroughFilter(Base):
     name = 'passthrough'
 
-    def is_valid_match(self, mapping):
+    def is_valid_hit(self, mapping):
         return True

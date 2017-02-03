@@ -50,29 +50,25 @@ class Mapper(object):
             list, that is to say there will be several MappingHit's for it.
         """
 
-        results = {}
         for result in matches:
-            if result.id not in results:
-                results[result.id] = gm.SequenceResults(name=result.id)
-            current = results[result.id]
             sequence = self.lookup_sequence(result)
-
             for hit in result:
                 for fragment in hit:
-                    stats = gm.HitStats(identical=fragment.ident_num,
-                                        gaps=fragment.gapopen_num,
-                                        query_length=result.seq_len,
-                                        hit_length=fragment.hit_end - fragment.hit_start)
-                    current.add(
-                        gm.MappingHit(
-                            name=result.id,
-                            chromosome=hit.id,
-                            start=fragment.hit_start,
-                            stop=fragment.hit_end,
-                            is_forward=fragment[0].hit_strand == 1,
-                            input_sequence=sequence,
-                            stats=stats))
-        return results.values()
+                    hit_len = fragment.hit_end - fragment.hit_start
+                    stats = gm.Stats(identical=fragment.ident_num,
+                                     identity=fragment.ident_pct,
+                                     gaps=fragment.gapopen_num,
+                                     query_length=result.seq_len,
+                                     hit_length=hit_len)
+
+                    yield gm.Hit(
+                        name=result.id,
+                        chromosome=hit.id,
+                        start=fragment.hit_start,
+                        stop=fragment.hit_end,
+                        is_forward=fragment[0].hit_strand == 1,
+                        input_sequence=sequence,
+                        stats=stats)
 
     def __call__(self, genome_file, query_file):
         """Perform the mapping. This takes a genome_file and a list of
@@ -181,15 +177,3 @@ class BlatMapper(Mapper):
             with open('/dev/null', 'wb') as null:
                 sp.check_call(cmd, stdout=null)
             return list(SearchIO.parse(tmp.name, 'blat-psl'))
-
-
-# class TrivialMapper(Mapper):
-#     name = 'trivial'
-
-#     def run(self, genome_file, query_path):
-#         matches = []
-#         for chromosome in SeqIO.parse(genome_file, 'fasta'):
-#             for sequence in SeqIO.parse(query_path, 'fasta'):
-#                 location = chromsome.find(sequence)
-#                 if location:
-#                     matches.append(

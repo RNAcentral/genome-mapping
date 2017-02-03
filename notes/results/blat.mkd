@@ -1,0 +1,70 @@
+---
+title: Blat results
+...
+
+# Exploring Extra hits
+
+I am looking at the current hits and seeing how many 'extra' locations we find.
+That is for a sequence where we have known locations do we find those locations
+and do we find 'extra' ones as well. Right now we do recover all known
+locations, but we get several extra ones as well.
+
+From my looking it seems we may be missing some data. Mapping: 
+
+http://rnacentral.org/rna/URS00002FC3E3/4896
+
+provides hits in chromosome III, where there is no current known location. For
+example:
+
+```python
+[Overlap(feature=<Feature transcript (I:3710739-3710821[-]) at 0x10da91b10>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='I', start=3710738, stop=3710821, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-1, stop=0)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='II', start=1600966, stop=1601049, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-18208, stop=-18207)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='II', start=1619173, stop=1619256, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-1, stop=0)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='II', start=1629158, stop=1629241, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=9984, stop=9985)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='II', start=1646304, stop=1646387, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=27130, stop=27131)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='III', start=1065777, stop=1065860, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-inf, stop=inf)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='III', start=1092933, stop=1093016, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-inf, stop=inf)),
+ Overlap(feature=<Feature transcript (II:1619174-1619256[-]) at 0x10d73e090>, location=MappingHit(name='URS00002FC3E3_4896', chromosome='III', start=1105977, stop=1106060, is_forward=True, input_sequence=None, stats=HitStats(identical=83, gaps=0, query_length=83, hit_length=83)), shift=Shift(start=-inf, stop=inf))]
+```
+
+However, if we browse the genome in one location:
+
+http://genomebrowser.pombase.org/Schizosaccharomyces_pombe/Location/View?r=III:1105977-1106060;db=core
+
+We can see that there is a tRNA-Val
+[transcript](http://genomebrowser.pombase.org/Schizosaccharomyces_pombe/Gene/Summary?db=core;g=SPCTRNAVAL.10;r=III:1105977-1106060;t=SPCTRNAVAL.10.1)
+in that location. It is in a flipped orientation however. If check RNAcentral's
+genome browser in that location we do not see any genes in that location. This
+is probably why we get some 'extra' hits. Searching RNAcentral for this
+sequence:
+
+```fasta
+>III dna:chromosome chromosome:ASM294v2:III:1105977:1106060:1
+ATGATCGTGCCAAGACTCGAACTTGGGACCGTCTGCGAACTGTAAATGTTAAGCAGAAAT
+TATAACCATCTAAACCACACGACC
+```
+
+Finds one [hit](http://rnacentral.org/rna/URS00002B039B). This is the expected
+tRNA-Val, but it has no links to PomBase. Are we missing mappings then?
+
+I checked to see if I could download data with this sequence, and it seems I
+can. Pulling out the snippet of the
+[file](ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/embl//Schizosaccharomyces_pombe.ASM294v2.30.III.embl)
+shows:
+
+```embl
+FT   gene            complement(1105978..1106060)
+FT                   /gene=SPCTRNAVAL.10
+FT                   /locus_tag="SPCTRNAVAL.10"
+FT                   /note="tRNA Valine [Source:PomBase;Acc:SPCTRNAVAL.10]"
+FT   misc_RNA        join(complement(1106023..1106060),
+FT                   complement(1105978..1106013))
+FT                   /gene="SPCTRNAVAL.10"
+FT                   /db_xref="PomBase_TRANSCRIPT:SPCTRNAVAL.10.1"
+FT                   /note="tRNA"
+FT                   /note="transcript_id=SPCTRNAVAL.10.1"
+```
+
+So the data exists, but it must not be getting imported. Or I'm
+misunderstanding something. It could also be that the sequence is flipped back
+to 5'->3' and then the mapping isn't flipped and imported as well. Not clear.
