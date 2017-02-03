@@ -7,7 +7,6 @@ import gffutils as gff
 from intervaltree import Interval
 from intervaltree import IntervalTree
 
-from genome_mapping.data import Shift
 from genome_mapping.data import Comparision
 
 

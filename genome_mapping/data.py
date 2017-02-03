@@ -51,8 +51,7 @@ class Shift(object):
     def total(self):
         return abs(self.start) + abs(self.stop)
 
-    @property
-    def type(self):
+    def compute_type(self, hit, feature):
         if not self.start and not self.stop:
             return 'exact'
         # if self.start > 0 and self.stop < 0:
@@ -65,19 +64,23 @@ class Comparision(object):
     hit = attr.ib()
     feature = attr.ib()
     shift = attr.ib(validator=attr.validators.instance_of(Shift))
+    type = attr.ib()
+
+    @classmethod
+    def compute_type(cls, hit, feature, shift):
+        if not feature:
+            return 'additional'
+        if not hit:
+            return 'missing'
+        if hit and feature:
+            return shift.compute_type()
+        return None
 
     @classmethod
     def build(cls, hit, feature):
         feat = feature
         if feat is not None:
             feat = str(feat)
-        return cls(hit=hit, feature=feat, shift=Shift.build(hit, feature))
-
-    @property
-    def type(self):
-        if not self.feature:
-            return 'additional'
-        if not self.hit:
-            return 'missing'
-        if self.hit and self.feature:
-            return self.shift.type
+        shift = Shift.build(hit, feature)
+        type = cls.compute_type(hit, feature, shift)
+        return cls(hit=hit, feature=feat, shift=shift, type=type)
