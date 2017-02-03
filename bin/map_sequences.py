@@ -164,7 +164,7 @@ def format():
 
 
 @format.command('json')
-@click.argument('hits', type=ReadablePickleFile())
+@click.argument('data', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
 def as_json(data, save):
     """

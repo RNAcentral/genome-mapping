@@ -7,6 +7,7 @@ import gffutils as gff
 from intervaltree import Interval
 from intervaltree import IntervalTree
 
+from genome_mapping.data import Shift
 from genome_mapping.data import Comparision
 
 
@@ -56,16 +57,16 @@ class Tree(object):
                 tree = by_chromosome[chromosome]
                 intervals = tree[feature.start:feature.end]
                 if not intervals:
-                    compared.append(Comparision(hit=None, feature=feature))
+                    compared.append(Comparision.build(None, feature))
                     continue
 
                 for interval in intervals:
                     match = interval.data
-                    compared.append(Comparision(hit=match, feature=feature))
-                    tree.remove(interval)
+                    compared.append(Comparision.build(match, feature))
+                    tree.discard(interval)
 
         for chromosome, tree in by_chromosome.items():
             for interval in tree:
-                    compared.append(Comparision(hit=match, feature=None))
+                compared.append(Comparision.build(match, None))
 
         return compared

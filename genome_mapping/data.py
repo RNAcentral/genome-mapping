@@ -9,7 +9,7 @@ IS_STR = attr.validators.instance_of(basestring)
 IS_SET = attr.validators.instance_of(set)
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class Stats(object):
     identical = attr.ib(validator=IS_INT)
     identity = attr.ib(validator=IS_FLOAT)
@@ -18,7 +18,7 @@ class Stats(object):
     hit_length = attr.ib(validator=IS_INT)
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class Hit(object):
     name = attr.ib(validator=IS_STR)
     chromosome = attr.ib(validator=IS_STR)
@@ -29,7 +29,7 @@ class Hit(object):
     stats = attr.ib(validator=attr.validators.instance_of(Stats))
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class Shift(object):
     start = attr.ib()
     stop = attr.ib()
@@ -37,6 +37,15 @@ class Shift(object):
     @classmethod
     def cross_chromosome(cls):
         return cls(start=float('-inf'), stop=float('inf'))
+
+    @classmethod
+    def build(cls, match, feature):
+        if not match:
+            return cls.cross_chromosome()
+        if not feature:
+            return cls.cross_chromosome()
+        return cls(start=match.start - feature.start,
+                   stop=match.stop - feature.end)
 
     @property
     def total(self):
@@ -51,11 +60,18 @@ class Shift(object):
         return 'inexact'
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class Comparision(object):
-    hit = attr.ib(validator=attr.validators.instance_of(Hit))
+    hit = attr.ib()
     feature = attr.ib()
     shift = attr.ib(validator=attr.validators.instance_of(Shift))
+
+    @classmethod
+    def build(cls, hit, feature):
+        feat = feature
+        if feat is not None:
+            feat = str(feat)
+        return cls(hit=hit, feature=feat, shift=Shift.build(hit, feature))
 
     @property
     def type(self):
@@ -64,4 +80,4 @@ class Comparision(object):
         if not self.hit:
             return 'missing'
         if self.hit and self.feature:
-            return self.shift.type()
+            return self.shift.type
