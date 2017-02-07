@@ -36,6 +36,7 @@ fetch "$remote_bed" > "$bed"
 fetch "$remote_known" > "$known"
 fetch "$remote_genome" > "$genome"
 fetch "$extra_genome" > "$extra"
+fetch "$remote_md5s" > "$md5s"
 
 echo 1>&2 'Extracting targets'
 bedtools getfasta -name -s -fi "$genome" -bed "$bed" | sed 's/::/ /' > "$targets"
@@ -48,7 +49,7 @@ grep -f upis "$md5s" > correct-md5
 
 echo 1>&2 'Validating sequence hashes'
 fasta md5 display $targets computed.tsv
-xsv join --no-headers -d '\t' 1 computed.tsv 1 $md5s | xsv select 1,2,4 > compared-md5.csv
+xsv join --no-headers -d '\t' 1 computed.tsv 1 $md5s | cut -d ',' -f1,2,4 > compared-md5.csv
 awk -F ',' '{ if ($2 != $1) print "Sequence" $1 "extracted incorrectly"; }' > bad-md5
 cat bad-md5
 

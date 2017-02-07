@@ -2,3 +2,4 @@
 3a1cea7cb25bfc0d4689d2830517aa3e  Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa
 397777522417af3f97e7cc44086dd08e  Schizosaccharomyces_pombe.ASM294v2.gff3
 039e556fdc8eb11306566ab1736ffcd6  Schizosaccharomyces_pombe.ASM294v2.bed
+89636813c35da8eb1e312e4eddded98b  md5.tsv
