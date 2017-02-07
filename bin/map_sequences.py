@@ -2,6 +2,7 @@
 
 import csv
 import pickle
+import itertools as it
 from pprint import pprint
 import collections as coll
 
@@ -134,14 +135,13 @@ def comparisions_select(comparisions, filter, save):
     processed = [replace.get(w, w) for w in filter]
     ast = compile(' '.join(processed), '<string>', mode='eval')
 
-    def checker(compare):
-        fields = utils.properities_of(Comparision)
-        locals = {f: getattr(compare, f) for f in fields}
-        for name in RESULT_TYPE:
-            locals[name] = name
-            for part in name.split('_'):
-                locals[part] = part
-        return eval(ast, globals(), locals)
+    def checker(obj):
+        fields = utils.properities_of(obj.__class__)
+        locals = {(f, getattr(obj, f)) for f in fields}
+        parts = it.chain(RESULT_TYPE,
+                         it.chain.from_iterable(t.split('_') for t in RESULT_TYPE))
+        locals.update((t, t) for t in parts)
+        return eval(ast, globals(), dict(locals))
 
     save([comp for comp in comparisions if checker(comp)])
 
