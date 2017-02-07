@@ -1,2 +1,5 @@
 *.pyc
 .DS_Store
+*.pickle
+summary.csv
+compared.gff3
