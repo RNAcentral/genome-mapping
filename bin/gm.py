@@ -60,7 +60,8 @@ def cli():
 @click.argument('save', type=WritablePickleFile())
 @click.option('--method', default='blat',
               type=click.Choice(mappers.known()))
-def find(genome, targets, save, method='blat'):
+@click.option('--organism', default='UNKNOWN')
+def find(genome, targets, save, method='blat', organism='UNKNOWN'):
     """
     Search the genome for the given targets using the specified program.
 
@@ -90,11 +91,10 @@ def hits():
 
 @hits.command('select')
 @click.argument('hits', type=ReadablePickleFile())
+@click.argument('matcher', type=click.Choice(matchers.known()))
 @click.argument('save', type=WritablePickleFile())
-@click.option('--matcher', default='exact',
-              type=click.Choice(matchers.known()))
 @click.option('--define', multiple=True, default={}, type=KeyValue())
-def hits_select(hits, save, matcher='exact', define={}):
+def hits_select(hits, matcher, save, define={}):
     """
     Filter out the hits that only pass a match criteria. A match criteria is
     something like 'exact' or sequence identity.
@@ -132,15 +132,14 @@ def comparisions_select(comparisions, filter, save):
     """
 
     replace = {'is': '=='}
-    processed = [replace.get(w, w) for w in filter]
-    ast = compile(' '.join(processed), '<string>', mode='eval')
+    processed = ' '.join(replace.get(w, w) for w in filter)
+    ast = compile(processed, '<string>', mode='eval')
 
     def checker(obj):
         fields = utils.properities_of(obj.__class__)
         locals = {(f, getattr(obj, f)) for f in fields}
-        parts = it.chain(RESULT_TYPE,
-                         it.chain.from_iterable(t.split('_') for t in RESULT_TYPE))
-        locals.update((t, t) for t in parts)
+        each = it.chain.from_iterable(t.split('_') for t in RESULT_TYPE)
+        locals.update((t, t) for t in it.chain(RESULT_TYPE, each))
         return eval(ast, globals(), dict(locals))
 
     save([comp for comp in comparisions if checker(comp)])
@@ -178,10 +177,10 @@ def summarize_hits(comparisions, save):
 
 
 @cli.command('as')
-@click.argument('format', type=click.Choice(formatters.known()))
 @click.argument('data', type=ReadablePickleFile())
+@click.argument('format', type=click.Choice(formatters.known()))
 @click.argument('save', type=click.File(mode='wb'))
-def format(format, data, save):
+def format(data, format, save):
     """
     Format the data into some format.
 
