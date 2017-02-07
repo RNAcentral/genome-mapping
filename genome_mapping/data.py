@@ -1,3 +1,5 @@
+import json
+
 import attr
 
 RESULT_TYPE = frozenset([
@@ -126,17 +128,20 @@ class Shift(object):
 
 @attr.s(frozen=True, slots=True)
 class Feature(object):
-    data = attr.ib()
-    pretty = attr.ib(validator=IS_STR)
+    data = attr.ib(hash=False)
+    pretty = attr.ib(validator=IS_STR, cmp=False)
 
     @classmethod
     def build(cls, feature):
-        pretty = feature
-        if pretty is not None:
-            pretty = str(pretty)
-        else:
-            pretty = ''
-        return cls(data=feature, pretty=pretty)
+        pretty = ''
+        data = None
+        if feature is not None:
+            data = list(feature.astuple())
+            data[9] = json.loads(data[9])
+            data[10] = json.loads(data[10])
+            data = tuple(data)
+            pretty = str(feature)
+        return cls(data=data, pretty=pretty)
 
 
 @attr.s(frozen=True, slots=True)
@@ -148,6 +153,9 @@ class Comparision(object):
 
     @classmethod
     def build(cls, hit, feature):
+        if not hit and not feature:
+            raise ValueError("At least one of hit and feature must be given")
+
         shift = Shift.build(hit, feature)
         type = LocationMatchType.build(shift, hit, feature)
         feat = Feature.build(feature)
