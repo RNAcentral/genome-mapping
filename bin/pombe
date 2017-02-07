@@ -12,12 +12,14 @@ remote_genome="ftp://ftp.ensemblgenomes.org/pub/current/fungi/fasta/schizosaccha
 extra_genome="ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/fasta/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa.gz"
 remote_known="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.gff3.gz"
 remote_bed="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.bed.gz"
+remote_md5s='ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral//releases/6.0/md5/md5.tsv.gz'
 matcher="exact"
 
 known="$(basename "$remote_known" '.gz')"
 genome="$(basename "$remote_genome" '.gz')"
 extra="$(basename "$extra_genome" '.gz')"
 bed="$(basename "$remote_bed" '.gz')"
+md5s="$(basename "$remote_md5s" '.gz')"
 targets="has-coordinates.fasta"
 
 sums="$base/md5sums.txt"
@@ -40,6 +42,17 @@ bedtools getfasta -name -s -fi "$genome" -bed "$bed" | sed 's/::/ /' > "$targets
 
 echo 1>&2 'Checking MD5 sums'
 md5sum -c "$sums" 
+
+grep '^>' "$targets" | cut -d ' ' -f1 | tr -d '>' > upis
+grep -f upis "$md5s" > correct-md5
+
+echo 1>&2 'Validating sequence hashes'
+fasta md5 display $targets computed.tsv
+xsv join --no-headers -d '\t' 1 computed.tsv 1 $md5s | xsv select 1,2,4 > compared-md5.csv
+awk -F ',' '{ if ($2 != $1) print "Sequence" $1 "extracted incorrectly"; }' > bad-md5
+cat bad-md5
+
+[ -s bad-md5 ] || exit 1
 
 cp "$bed" "$known" "$genome" "$targets" "$base"
 popd
