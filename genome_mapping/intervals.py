@@ -27,13 +27,15 @@ class Tree(object):
     def intervals(self):
         seen = set()
         for feature in self.db.all_features():
+            if feature.featuretype != 'transcript':
+                continue
+
             name = feature.attributes['Name'][0]
             key = (name, feature.start, feature.end)
             if key in seen:
                 continue
             seen.add(key)
-
-            yield (feature.start - 1, feature.stop), feature
+            yield (feature.start, feature.stop), feature
 
     def search(self, start, stop):
         return {i.data for i in self.tree.search(start, stop)}
@@ -49,12 +51,17 @@ class Tree(object):
         by_chromosome = it.groupby(by_chromosome, lambda i: i[2].chromosome)
         by_chromosome = {k: as_tree(v) for (k, v) in by_chromosome}
 
+        seen = set()
         compared = []
         for name, features in self.locations.items():
             for feature in features:
                 chromosome = feature.seqid
                 tree = by_chromosome[chromosome]
-                intervals = tree[feature.start:feature.end]
+                start, end = sorted([feature.start, feature.end])
+                intervals = tree[start:end]
+                if not intervals:
+                    intervals = tree.search(start, end)
+
                 if not intervals:
                     compared.append(Comparision.build(None, feature))
                     continue
@@ -62,10 +69,11 @@ class Tree(object):
                 for interval in intervals:
                     match = interval.data
                     compared.append(Comparision.build(match, feature))
-                    tree.discard(interval)
+                    seen.add(interval)
 
         for chromosome, tree in by_chromosome.items():
             for interval in tree:
-                compared.append(Comparision.build(match, None))
+                if interval not in seen:
+                    compared.append(Comparision.build(interval.data, None))
 
         return compared

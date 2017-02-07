@@ -100,7 +100,7 @@ class ExactMappingFilter(Base):
 class PercentIdentityFilter(Base):
     name = 'identity'
 
-    def __init__(self, cutoff=99.0):
+    def __init__(self, cutoff=100.0):
         self.cutoff = cutoff
 
     def is_valid_hit(self, hit):

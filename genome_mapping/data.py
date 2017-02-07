@@ -1,12 +1,32 @@
 import attr
 
-RESULT_TYPE = frozenset(['exact', 'additional', 'missing', 'inexact'])
+RESULT_TYPE = frozenset([
+    'correct/exact',
+    'correct/within',
+    'correct/enclose',
+    'correct/5p-overlap',
+    'correct/3p-overlap',
+    'incorrect/exact',
+    'incorrect/within',
+    'incorrect/enclose',
+    'incorrect/5p-overlap',
+    'incorrect/3p-overlap',
+    'novel',
+    'missing',
+])
 
 IS_INT = attr.validators.instance_of(int)
 IS_FLOAT = attr.validators.instance_of(float)
 IS_BOOL = attr.validators.instance_of(bool)
 IS_STR = attr.validators.instance_of(basestring)
 IS_SET = attr.validators.instance_of(set)
+
+
+@attr.s(frozen=True, slots=True)
+class SequenceSummary(object):
+    upi = attr.ib(validator=IS_STR)
+    id = attr.ib(validator=IS_STR)
+    header = attr.ib(validator=IS_STR)
 
 
 @attr.s(frozen=True, slots=True)
@@ -27,6 +47,55 @@ class Hit(object):
     is_forward = attr.ib(validator=IS_BOOL)
     input_sequence = attr.ib()
     stats = attr.ib(validator=attr.validators.instance_of(Stats))
+
+
+@attr.s(frozen=True, slots=True)
+class LocationMatchType(object):
+    location = attr.ib()
+    match = attr.ib()
+    pretty = attr.ib(validator=IS_STR)
+
+    @classmethod
+    def build(cls, shift, hit, feature):
+        shift_type = '{match_type}/{location_type}'
+
+        if not hit and not feature:
+            return cls(location=None, match=None, pretty='IMPOSSIBLE')
+
+        if not feature:
+            return cls(location='novel', match=None, pretty='novel')
+
+        if not hit:
+            return cls(location=None, match='missing', pretty='missing')
+
+        if hit.input_sequence.upi == feature.attributes['Name'][0]:
+            match_type = 'correct'
+        else:
+            match_type = 'incorrect'
+
+        if shift.is_exact():
+            location_type = 'exact'
+        else:
+            if shift.start >= 0 and shift.stop <= 0:
+                location_type = 'within'
+            if shift.start < 0 and shift.stop > 0:
+                location_type = 'enclose'
+            if shift.start > 0 and shift.stop >= 0:
+                location_type = "3p-shift"
+            if shift.start < 0 and shift.stop <= 0:
+                location_type = "5p-shift"
+            else:
+                # print(hit)
+                # print(feature)
+                # print(shift)
+                location_type = 'UNKNOWN'
+
+        return cls(
+            location=location_type,
+            match=match_type,
+            pretty=shift_type.format(match_type=match_type,
+                                     location_type=location_type),
+        )
 
 
 @attr.s(frozen=True, slots=True)
@@ -51,12 +120,9 @@ class Shift(object):
     def total(self):
         return abs(self.start) + abs(self.stop)
 
-    def compute_type(self, hit, feature):
-        if not self.start and not self.stop:
-            return 'exact'
-        # if self.start > 0 and self.stop < 0:
-        #     return 'within'
-        return 'inexact'
+    def is_exact(self):
+        return (not self.start and not self.stop) or \
+            (self.start == -1 and not self.stop)
 
 
 @attr.s(frozen=True, slots=True)
@@ -67,20 +133,10 @@ class Comparision(object):
     type = attr.ib()
 
     @classmethod
-    def compute_type(cls, hit, feature, shift):
-        if not feature:
-            return 'additional'
-        if not hit:
-            return 'missing'
-        if hit and feature:
-            return shift.compute_type()
-        return None
-
-    @classmethod
     def build(cls, hit, feature):
         feat = feature
         if feat is not None:
             feat = str(feat)
         shift = Shift.build(hit, feature)
-        type = cls.compute_type(hit, feature, shift)
+        type = LocationMatchType.build(shift, hit, feature)
         return cls(hit=hit, feature=feat, shift=shift, type=type)

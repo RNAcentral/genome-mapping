@@ -3,6 +3,7 @@ larger target sequence (RNA sequences mapped to genomes or chromosomes). All
 Mappers are expected to be callable objects. """
 
 import os
+import re
 import sys
 import tempfile
 
@@ -27,8 +28,26 @@ def fetch(name):
 
 
 class Mapper(object):
+    def __init__(self):
+        self.mapping = {}
+
+    def valid_sequence(self, sequence):
+        return False
+
     def lookup_sequence(self, result):
-        pass
+        upi = re.sub('_\d+$', '', result.id)
+        return self.mapping[upi]
+
+    def sequences(self, query_file):
+        for sequence in SeqIO.parse(query_file, 'fasta'):
+            if self.valid_sequence(sequence):
+                upi = re.sub('_\d+$', '', sequence.id)
+                self.mapping[upi] = gm.SequenceSummary(
+                    id=sequence.id,
+                    upi=upi,
+                    header=sequence.description,
+                )
+                yield sequence
 
     def create_mappings(self, matches):
         """Create the mappings from the given raw data. The mapping objects in
@@ -61,11 +80,12 @@ class Mapper(object):
                                      query_length=result.seq_len,
                                      hit_length=hit_len)
 
+                    start, end = sorted([fragment.hit_start, fragment.hit_end])
                     yield gm.Hit(
                         name=result.id,
                         chromosome=hit.id,
-                        start=fragment.hit_start,
-                        stop=fragment.hit_end,
+                        start=start,
+                        stop=end,
                         is_forward=fragment[0].hit_strand == 1,
                         input_sequence=sequence,
                         stats=stats)
@@ -111,9 +131,10 @@ class BlatMapper(Mapper):
         path : str
             The full path to the BLAT binary.
         """
+        super(BlatMapper, self).__init__()
         self.path = path
 
-    def filter_sequences(self, sequences):
+    def valid_sequence(self, sequence):
         """
         Filter all sequences to only those that are long enough. BLAT does
         not work with short,  25 nt, sequences.
@@ -128,31 +149,7 @@ class BlatMapper(Mapper):
         valid_sequences : list
             The list of long enough sequences.
         """
-        for sequence in sequences:
-            if len(sequence) > MIN_BLAT_SEQ_LEN:
-                yield sequence
-
-    def create_query(self, sequences):
-        """This creates a query file for BLAT. It will write out all given
-        sequences to a FASTA file and return the path to that file. This file
-        will be used by BLAT to query.
-
-        Parameters
-        ----------
-        sequences : list
-            List of sequences to write.
-
-        Returns
-        -------
-        path : str
-            The path to where the sequences were written.
-        """
-
-        filename = os.path.abspath('query-sequences.fa')
-        valid = self.filter_sequences(sequences)
-        with open(filename, 'wb') as handle:
-            SeqIO.write(valid, handle, 'fasta')
-        return filename
+        return len(sequence) > MIN_BLAT_SEQ_LEN
 
     def run(self, genome_file, query_path):
         """Run the BLAT program on the given genome with the given query.
@@ -173,7 +170,9 @@ class BlatMapper(Mapper):
         """
 
         with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
-            cmd = [self.path, 'q=rna', genome_file, query_path, tmp.name]
-            with open('/dev/null', 'wb') as null:
-                sp.check_call(cmd, stdout=null)
-            return list(SearchIO.parse(tmp.name, 'blat-psl'))
+            with tempfile.NamedTemporaryFile(suffix='.fa') as qtmp:
+                SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
+                cmd = [self.path, 'q=rna', genome_file, qtmp.name, tmp.name]
+                with open('/dev/null', 'wb') as null:
+                    sp.check_call(cmd, stdout=null)
+                return list(SearchIO.parse(tmp.name, 'blat-psl'))

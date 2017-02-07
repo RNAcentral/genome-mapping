@@ -114,7 +114,7 @@ def extract_hit_class(comparisions, save, types):
     """
     Filter comparisions to only those of the given type(s).
     """
-    save([comp for comp in comparisions if comp.type in set(types)])
+    save([comp for comp in comparisions if comp.type.pretty in set(types)])
 
 
 @cli.group('extract')
@@ -149,7 +149,7 @@ def summarize_hits(comparisions, save):
     """
     Compute a summary of the number of each type of comparisions.
     """
-    summary = dict(coll.Counter(c.type for c in comparisions))
+    summary = dict(coll.Counter(c.type.pretty for c in comparisions))
     writer = csv.DictWriter(save, sorted(summary.keys()))
     writer.writeheader()
     writer.writerow(summary)
