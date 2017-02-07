@@ -1,5 +1,8 @@
 import inspect
 
+import attr
+
+
 class NonUniqueName(Exception):
     pass
 
@@ -39,3 +42,7 @@ def children_of(module, parent, ignore=set()):
 
 def names_of_children(module, parent, ignore=set()):
     return {cls.name for cls in children_of(module, parent, ignore=set())}
+
+
+def properities_of(klass):
+    return {a.name for a in attr.fields(klass)}

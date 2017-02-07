@@ -1,16 +1,18 @@
 import attr
 
 RESULT_TYPE = frozenset([
-    'correct/exact',
-    'correct/within',
-    'correct/enclose',
-    'correct/5p-overlap',
-    'correct/3p-overlap',
-    'incorrect/exact',
-    'incorrect/within',
-    'incorrect/enclose',
-    'incorrect/5p-overlap',
-    'incorrect/3p-overlap',
+    'correct_exact',
+    'correct_within',
+    'correct_enclose',
+    'correct_5p-overlap',
+    'correct_3p-overlap',
+    'incorrect_exact',
+    'incorrect_within',
+    'incorrect_enclose',
+    'incorrect_5p-overlap',
+    'incorrect_3p-overlap',
+    'correct_UNKNOWN',
+    'incorrect_UNKNOWN',
     'novel',
     'missing',
 ])
@@ -57,10 +59,10 @@ class LocationMatchType(object):
 
     @classmethod
     def build(cls, shift, hit, feature):
-        shift_type = '{match_type}/{location_type}'
+        shift_type = '{match_type}_{location_type}'
 
         if not hit and not feature:
-            return cls(location=None, match=None, pretty='IMPOSSIBLE')
+            raise ValueError("Atleast one of hit and feature must be given")
 
         if not feature:
             return cls(location='novel', match=None, pretty='novel')
@@ -78,16 +80,13 @@ class LocationMatchType(object):
         else:
             if shift.start >= 0 and shift.stop <= 0:
                 location_type = 'within'
-            if shift.start < 0 and shift.stop > 0:
+            elif shift.start < 0 and shift.stop > 0:
                 location_type = 'enclose'
-            if shift.start > 0 and shift.stop >= 0:
+            elif shift.start > 0 and shift.stop >= 0:
                 location_type = "3p-shift"
-            if shift.start < 0 and shift.stop <= 0:
+            elif shift.start < 0 and shift.stop <= 0:
                 location_type = "5p-shift"
             else:
-                # print(hit)
-                # print(feature)
-                # print(shift)
                 location_type = 'UNKNOWN'
 
         return cls(
@@ -126,6 +125,21 @@ class Shift(object):
 
 
 @attr.s(frozen=True, slots=True)
+class Feature(object):
+    data = attr.ib()
+    pretty = attr.ib(validator=IS_STR)
+
+    @classmethod
+    def build(cls, feature):
+        pretty = feature
+        if pretty is not None:
+            pretty = str(pretty)
+        else:
+            pretty = ''
+        return cls(data=feature, pretty=pretty)
+
+
+@attr.s(frozen=True, slots=True)
 class Comparision(object):
     hit = attr.ib()
     feature = attr.ib()
@@ -134,9 +148,7 @@ class Comparision(object):
 
     @classmethod
     def build(cls, hit, feature):
-        feat = feature
-        if feat is not None:
-            feat = str(feat)
         shift = Shift.build(hit, feature)
         type = LocationMatchType.build(shift, hit, feature)
+        feat = Feature.build(feature)
         return cls(hit=hit, feature=feat, shift=shift, type=type)

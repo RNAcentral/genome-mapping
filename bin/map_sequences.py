@@ -1,17 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -W ignore
 
 import csv
-import json
 import pickle
 from pprint import pprint
 import collections as coll
 
-import attr
 import click
 
+from genome_mapping import utils
 from genome_mapping import mappers
 from genome_mapping import matchers
+from genome_mapping import formatters
 from genome_mapping.intervals import Tree
+from genome_mapping.data import Comparision
 from genome_mapping.data import RESULT_TYPE
 
 
@@ -58,7 +59,7 @@ def cli():
 @click.argument('save', type=WritablePickleFile())
 @click.option('--method', default='blat',
               type=click.Choice(mappers.known()))
-def hits(genome, targets, save, method='blat'):
+def find(genome, targets, save, method='blat'):
     """
     Search the genome for the given targets using the specified program.
 
@@ -79,13 +80,20 @@ def hits(genome, targets, save, method='blat'):
     save(list(mapper(genome, targets)))
 
 
-@cli.command('select-matches')
+@cli.group('hits')
+def hits():
+    """Group of commands dealing with the hits.
+    """
+    pass
+
+
+@hits.command('select')
 @click.argument('hits', type=ReadablePickleFile())
 @click.argument('save', type=WritablePickleFile())
 @click.option('--matcher', default='exact',
               type=click.Choice(matchers.known()))
 @click.option('--define', multiple=True, default={}, type=KeyValue())
-def filter_hits(hits, save, matcher='exact', define={}):
+def hits_select(hits, save, matcher='exact', define={}):
     """
     Filter out the hits that only pass a match criteria. A match criteria is
     something like 'exact' or sequence identity.
@@ -95,7 +103,7 @@ def filter_hits(hits, save, matcher='exact', define={}):
     save(list(matcher.filter_matches(hits)))
 
 
-@cli.command('compare')
+@hits.command('compare')
 @click.argument('hits', type=ReadablePickleFile())
 @click.argument('correct', type=click.Path(exists=True, readable=True))
 @click.argument('save', type=WritablePickleFile())
@@ -106,43 +114,57 @@ def compare_matches(hits, correct, save):
     save(tree.compare_to_known(hits))
 
 
-@cli.command('select-type')
-@click.argument('comparisions', type=ReadablePickleFile())
-@click.argument('save', type=WritablePickleFile())
-@click.option('--types', multiple=True, type=click.Choice(RESULT_TYPE))
-def extract_hit_class(comparisions, save, types):
+@cli.group('comparisions')
+def comparisions():
+    """Group of commands dealing with maninpulating comparisions.
     """
-    Filter comparisions to only those of the given type(s).
-    """
-    save([comp for comp in comparisions if comp.type.pretty in set(types)])
-
-
-@cli.group('extract')
-def extract():
     pass
 
 
-@extract.command('hit')
+@comparisions.command('select')
 @click.argument('comparisions', type=ReadablePickleFile())
+@click.argument('filter', type=str, nargs=-1)
 @click.argument('save', type=WritablePickleFile())
-def extract_hits(comparisions, save):
+def comparisions_select(comparisions, filter, save):
     """
-    Extract only the hits from comparisions.
+    Filter comparisions to only those of the given type(s).
     """
-    save([c.hit for c in comparisions])
+
+    replace = {'is': '=='}
+    processed = [replace.get(w, w) for w in filter]
+    ast = compile(' '.join(processed), '<string>', mode='eval')
+
+    def checker(compare):
+        fields = utils.properities_of(Comparision)
+        locals = {f: getattr(compare, f) for f in fields}
+        for name in RESULT_TYPE:
+            locals[name] = name
+            for part in name.split('_'):
+                locals[part] = part
+        return eval(ast, globals(), locals)
+
+    save([comp for comp in comparisions if checker(comp)])
 
 
-@extract.command('feature')
+@comparisions.command('extract')
 @click.argument('comparisions', type=ReadablePickleFile())
+@click.argument('property',
+                type=click.Choice(utils.properities_of(Comparision)))
 @click.argument('save', type=WritablePickleFile())
-def extract_features(comparisions, save):
+@click.option('--skip-missing', is_flag=True, default=False)
+def comparisions_extract(property, comparisions, save, skip_missing=False):
+    """Extract parts of the given comparisions.
     """
-    Extract the features from comparisions.
-    """
-    save([c.feature for c in comparisions])
+    extracted = []
+    for comparision in comparisions:
+        entry = getattr(comparision, property)
+        if skip_missing and not entry:
+            continue
+        extracted.append(entry)
+    save(extracted)
 
 
-@cli.command('summary')
+@comparisions.command('summary')
 @click.argument('comparisions', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
 def summarize_hits(comparisions, save):
@@ -155,23 +177,24 @@ def summarize_hits(comparisions, save):
     writer.writerow(summary)
 
 
-@cli.group('as')
-def format():
-    """
-    Format the data into some format.
-    """
-    pass
-
-
-@format.command('json')
+@cli.command('as')
+@click.argument('format', type=click.Choice(formatters.known()))
 @click.argument('data', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
-def as_json(data, save):
+def format(format, data, save):
     """
-    Convert any data to JSON.
+    Format the data into some format.
+
+    Paramaters
+    ----------
+    format : str
+        The name of the format to use.
+    data : path
+        The path to the data to read, '-' means stdin.
+    save : path
+         The path of where to save data, '-' means stdout.
     """
-    data = [attr.asdict(d) for d in data]
-    json.dump(data, save)
+    formatters.format(data, format, save)
 
 
 @cli.command('pp')
