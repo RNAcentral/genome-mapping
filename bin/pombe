@@ -1,0 +1,65 @@
+#!/usr/bin/env sh
+
+set -euo pipefail
+IFS=$'\n\t'
+
+fetch() {
+  curl "$1" | gzip -d
+}
+
+base="$PWD/data/pombe/"
+remote_genome="ftp://ftp.ensemblgenomes.org/pub/current/fungi/fasta/schizosaccharomyces_pombe/dna/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa.gz"
+extra_genome="ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/fasta/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa.gz"
+remote_known="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.gff3.gz"
+remote_bed="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.bed.gz"
+matcher="exact"
+
+known="$(basename "$remote_known" '.gz')"
+genome="$(basename "$remote_genome" '.gz')"
+extra="$(basename "$extra_genome" '.gz')"
+bed="$(basename "$remote_bed" '.gz')"
+targets="has-coordinates.fasta"
+
+sums="$base/md5sums.txt"
+initial="$base/initial-hits.pickle"
+selected="$base/selected-hits.pickle"
+compared="$base/compared.pickle"
+gff="$base/compared.gff3"
+summary="$base/summary.csv"
+
+tmp="$(mktemp -d)"
+pushd "$tmp"
+echo 1>&2 'Fetching remote data'
+fetch "$remote_bed" > "$bed"
+fetch "$remote_known" > "$known"
+fetch "$remote_genome" > "$genome"
+fetch "$extra_genome" > "$extra"
+
+echo 1>&2 'Extracting targets'
+bedtools getfasta -name -s -fi "$genome" -bed "$bed" | sed 's/::/ /' > "$targets"
+
+echo 1>&2 'Checking MD5 sums'
+md5sum -c "$sums" 
+
+cp "$bed" "$known" "$genome" "$targets" "$base"
+popd
+rm -r "$tmp"
+
+known="$base/$known"
+genome="$base/$genome"
+bed="$base/$bed"
+targets="$base/$targets"
+
+echo 1>&2 'Searching for targets'
+gm.py find "$genome" "$targets" "$initial"
+
+echo 1>&2 'Selecting matching hits'
+gm.py hits select "$initial" "$matcher" "$selected"
+
+echo 1>&2 'Comparing to known locations'
+gm.py hits compare "$selected" "$known" "$compared"
+
+echo 1>&2 'Writing gff file from comparisions'
+gm.py as "$compared" gff "$gff"
+
+gm.py comparisions summary "$compared" - | tee "$summary" | xsv table
