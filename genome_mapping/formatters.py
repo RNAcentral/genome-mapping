@@ -71,8 +71,11 @@ class Gff3(Base):
             elif isinstance(entry, dat.Feature):
                 stream.write(self.format_feature(entry))
             elif isinstance(entry, dat.Comparision):
-                stream.write(self.format_hit(entry.hit,
-                                             type=[entry.type.pretty]))
-                # stream.write(self.format_feature(entry.feature))
+                if entry.hit:
+                    stream.write(self.format_hit(entry.hit,
+                                                 type=[entry.type.pretty]))
+
+                if entry.feature.data:
+                    stream.write(self.format_feature(entry.feature))
             else:
                 raise ValueError('Cannot format all data to gff')
