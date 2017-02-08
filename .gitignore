@@ -3,3 +3,4 @@
 *.pickle
 summary.csv
 compared.gff3
+*.fai
