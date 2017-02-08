@@ -177,10 +177,10 @@ def summarize_hits(comparisions, save):
 
 
 @cli.command('as')
-@click.argument('data', type=ReadablePickleFile())
 @click.argument('format', type=click.Choice(formatters.known()))
+@click.argument('data', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
-def format(data, format, save):
+def format(format, data, save):
     """
     Format the data into some format.
 

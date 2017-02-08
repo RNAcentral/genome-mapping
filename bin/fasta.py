@@ -69,5 +69,23 @@ def dna_to_rna(fasta, save):
         save(record)
 
 
+@main.command('merge-by-id')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('save', type=WriteableBioFile('fasta'))
+@click.option('--validate-hash', is_flag=True, default=False)
+def merge_by_id(fasta, save, validate_hash):
+    unique = {}
+    for record in fasta:
+        if record.id not in unique:
+            unique[record.id] = record
+            continue
+
+        rest = record.description.replace(record.id, '')
+        unique[record.id].description += ',%s' % rest
+
+    for record in unique.itervalues():
+        save(record)
+
+
 if __name__ == '__main__':
     main()
