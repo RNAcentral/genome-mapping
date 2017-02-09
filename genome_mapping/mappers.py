@@ -2,7 +2,6 @@
 larger target sequence (RNA sequences mapped to genomes or chromosomes). All
 Mappers are expected to be callable objects. """
 
-import os
 import re
 import sys
 import tempfile
@@ -172,7 +171,8 @@ class BlatMapper(Mapper):
         with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
             with tempfile.NamedTemporaryFile(suffix='.fa') as qtmp:
                 SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
-                cmd = [self.path, 'q=rna', genome_file, qtmp.name, tmp.name]
+                cmd = [self.path, '-t=dna', 'q=rna', genome_file, qtmp.name,
+                       tmp.name]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stdout=null)
                 return list(SearchIO.parse(tmp.name, 'blat-psl'))

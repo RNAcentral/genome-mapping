@@ -115,6 +115,6 @@ echo 1>&2 'Comparing to known locations'
 gm.py hits compare "$selected" "$known" "$compared"
 
 echo 1>&2 'Writing gff file from comparisions'
-gm.py as gff "$compared" "$gff"
+gm.py as gff3 "$compared" "$gff"
 
 gm.py comparisions summary "$compared" - | tee "$summary" | xsv table

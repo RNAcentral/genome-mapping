@@ -81,17 +81,6 @@ class ExactMappingFilter(Base):
     name = 'exact'
 
     def is_valid_hit(self, hit):
-        """Check if the mapping is exact.
-
-        Parameters
-        ----------
-        hit : Mapping
-        
-        Returns
-        -------
-        is_exact : bool
-            True if the mapping is exact.
-        """
         return hit.stats.hit_length == hit.stats.query_length and \
             hit.stats.gaps == 0 and \
             hit.stats.identical == hit.stats.hit_length
@@ -100,14 +89,18 @@ class ExactMappingFilter(Base):
 class PercentIdentityFilter(Base):
     name = 'identity'
 
-    def __init__(self, cutoff=100.0):
-        self.cutoff = cutoff
+    def __init__(self, min=100.0, max=100.0):
+        self.min = min
+        self.max = max
 
     def is_valid_hit(self, hit):
-        return hit.stats.identity >= self.cutoff
+        return hit.stats.identity >= self.min and \
+            hit.stats.identity <= self.max
 
 
 class PassThroughFilter(Base):
+    """Always accept all matches.
+    """
     name = 'passthrough'
 
     def is_valid_hit(self, mapping):

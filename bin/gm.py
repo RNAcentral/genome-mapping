@@ -84,7 +84,8 @@ def find(genome, targets, save, method='blat', organism='UNKNOWN'):
 
 @cli.group('hits')
 def hits():
-    """Group of commands dealing with the hits.
+    """
+    Group of commands dealing with the hits.
     """
     pass
 
@@ -109,10 +110,34 @@ def hits_select(hits, matcher, save, define={}):
 @click.argument('correct', type=click.Path(exists=True, readable=True))
 @click.argument('save', type=WritablePickleFile())
 def compare_matches(hits, correct, save):
-    """Compare some hits to known examples to see how well they overlap.
+    """
+    Compare some hits to known examples to see how well they overlap.
     """
     tree = Tree(correct)
     save(tree.compare_to_known(hits))
+
+
+@hits.command('best-within')
+@click.argument('hits', type=ReadablePickleFile())
+@click.argument('features', type=click.Path(exists=True, readable=True))
+@click.argument('max-range', type=int)
+@click.argument('save', type=WritablePickleFile())
+def best_within(hits, features, max_range, save):
+    """
+    Find the best hits within some distance of the given features.
+    """
+    tree = Tree(features)
+    save(tree.best_hits_within(hits, max_range))
+
+
+@hits.command('merge')
+@click.argument('hits', type=ReadablePickleFile(), nargs=-1)
+@click.argument('save', type=WritablePickleFile())
+def merge_hits(hits, save):
+    """Merge several collections hits. This should not produce any duplicate
+    hits.
+    """
+    save(sorted(set(it.chain.from_iterable(hits))))
 
 
 @cli.group('comparisions')
@@ -203,6 +228,14 @@ def display(data):
     Pretty print data to stdout.
     """
     pprint(data)
+
+
+@cli.command('intervals')
+@click.argument('features', type=click.Path(exists=True, readable=True))
+@click.argument('save', type=WritablePickleFile())
+def intervals(features, save):
+    tree = Tree(features)
+    save(tree.trees)
 
 
 if __name__ == '__main__':

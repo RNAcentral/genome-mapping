@@ -39,28 +39,43 @@ class Json(Base):
 
 
 class Gff3(Base):
-    name = 'gff'
+    name = 'gff3'
 
     def format_feature(self, feature):
         return feature.pretty + '\n'
 
-    def format_hit(self, hit, **extra):
+    def format_hit(self, hit, hit_type=None, **extra):
         attributes = {
-            'Name': [hit.input_sequence.upi],
-            'Header': [hit.input_sequence.header],
+            'Name': hit.input_sequence.upi,
+            'Header': hit.input_sequence.header,
+            'Identity': hit.stats.identity,
+            'HitSize': hit.stats.hit_length,
+            'QuerySize': hit.stats.query_length,
+            'Gaps': hit.stats.gaps,
         }
         attributes.update(extra or {})
+
+        normalized = {}
+        for key, value in attributes.items():
+            if not isinstance(value, list):
+                normalized[key] = [str(value)]
+            else:
+                normalized[key] = [str(e) for e in value]
+
+        feature_type = 'hit'
+        if hit_type:
+            feature_type = '%s-hit' % hit_type
 
         return str(Feature(
             seqid=hit.chromosome,
             source='map_sequences.py',
-            featuretype='hit',
-            start=hit.start,
+            featuretype=feature_type,
+            start=hit.start + 1,
             end=hit.stop,
             score='',
             strand='+' if hit.is_forward else '-',
             frame='.',
-            attributes=attributes,
+            attributes=normalized,
         )) + '\n'
 
     def __call__(self, data, stream):
@@ -73,7 +88,8 @@ class Gff3(Base):
             elif isinstance(entry, dat.Comparision):
                 if entry.hit:
                     stream.write(self.format_hit(entry.hit,
-                                                 type=[entry.type.pretty]))
+                                                 hit_type=entry.type.match,
+                                                 type=entry.type.pretty))
 
                 if entry.feature.data:
                     stream.write(self.format_feature(entry.feature))
