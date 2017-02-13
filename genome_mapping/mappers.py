@@ -37,13 +37,16 @@ class Mapper(object):
         upi = re.sub('_\d+$', '', result.id)
         return self.mapping[upi]
 
-    def sequences(self, query_file):
+    def sequences(self, query_file, as_dna=False):
         for sequence in SeqIO.parse(query_file, 'fasta'):
+            if as_dna:
+                sequence.seq = sequence.seq.back_transcribe()
+
             if self.valid_sequence(sequence):
-                upi = re.sub('_\d+$', '', sequence.id)
-                self.mapping[upi] = gm.SequenceSummary(
+                uri = re.sub('_\d+$', '', sequence.id)
+                self.mapping[uri] = gm.SequenceSummary(
                     id=sequence.id,
-                    upi=upi,
+                    uri=uri,
                     header=sequence.description,
                 )
                 yield sequence
@@ -74,8 +77,8 @@ class Mapper(object):
                 for fragment in hit:
                     hit_len = fragment.hit_end - fragment.hit_start
                     stats = gm.Stats(identical=fragment.ident_num,
-                                     identity=fragment.ident_pct,
-                                     gaps=fragment.gapopen_num,
+                                     identity=0.0, # fragment.ident_pct,
+                                     gaps=0, # fragment.gapopen_num,
                                      query_length=result.seq_len,
                                      hit_length=hit_len)
 
@@ -122,6 +125,15 @@ class BlatMapper(Mapper):
 
     name = 'blat'
 
+    default_options = [
+        '-noTrimA',
+        '-fine',
+        '-minIdentity=0',
+        '-minScore=0',
+        '-minMatch=1',
+        '-maxGap=3',
+    ]
+
     def __init__(self, path='blat'):
         """Create a new BlatMapper.
 
@@ -150,7 +162,7 @@ class BlatMapper(Mapper):
         """
         return len(sequence) > MIN_BLAT_SEQ_LEN
 
-    def run(self, genome_file, query_path):
+    def run(self, genome_file, query_path, options=[]):
         """Run the BLAT program on the given genome with the given query.
 
         Parameters
@@ -168,11 +180,113 @@ class BlatMapper(Mapper):
             BioPython.
         """
 
+        options = self.default_options
         with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
             with tempfile.NamedTemporaryFile(suffix='.fa') as qtmp:
                 SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
-                cmd = [self.path, '-t=dna', 'q=rna', genome_file, qtmp.name,
-                       tmp.name]
+                cmd = [
+                    self.path,
+                    '-t=dna',
+                    'q=rna',
+                ] + options + [
+                    genome_file,
+                    qtmp.name,
+                    tmp.name,
+                ]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stdout=null)
                 return list(SearchIO.parse(tmp.name, 'blat-psl'))
+
+
+class BlastMapper(Mapper):
+    name = 'blast'
+
+    default_options = [
+        '-word_size=4',
+        '-evalue=1',
+    ]
+
+    def __init__(self, path='blastn'):
+        super(BlastMapper, self).__init__()
+        self.path = path
+
+    def valid_sequence(self, sequence):
+        return True
+
+    def run(self, genome_file, query_path, options=[]):
+        """Run the BLAT program on the given genome with the given query.
+
+        Parameters
+        ----------
+        genome_file : str
+            Full path to the genome file to use.
+
+        query_path : str
+            Full path to the query file to use.
+
+        Returns
+        -------
+        results : list
+            A list of parsed QueryResult objects. The parsing is done by
+            BioPython.
+        """
+
+        options = self.default_options
+        format = 'blast-xml'
+        with tempfile.NamedTemporaryFile(suffix='.%s' % format) as tmp:
+            with tempfile.NamedTemporaryFile(suffix='.fasta', mode='wb') as qtmp:
+                SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
+                cmd = [
+                    self.path,
+                ] + options + [
+                    '-outfmt=5',
+                    '-db=%s' % genome_file,
+                    '-query=%s' % qtmp.name,
+                    '-out=%s' % tmp.name,
+                ]
+                with open('/dev/null', 'wb') as null:
+                    sp.check_call(cmd, stdout=null)
+                return list(SearchIO.parse(tmp.name, format))
+
+
+class ExonerateMapper(Mapper):
+    name = 'exonerate'
+
+    default_options = [
+        # '--model',
+        # 'affine:bestfit',
+        '--saturatethreshold',
+        '0',
+    ]
+
+    def __init__(self, path='exonerate'):
+        super(ExonerateMapper, self).__init__()
+        self.path = path
+
+    def valid_sequence(self, sequence):
+        return True
+
+    def run(self, genome_file, query_path, options=[]):
+        options = self.default_options
+        format = 'exonerate-vulgar'
+        with tempfile.NamedTemporaryFile(suffix='.%s' % format) as tmp:
+            with tempfile.NamedTemporaryFile(suffix='.fasta') as qtmp:
+                SeqIO.write(self.sequences(query_path, as_dna=True), qtmp, 'fasta')
+                cmd = [
+                    self.path,
+                ] + options + [
+                    '--showvulgar',
+                    'TRUE',
+                    # '-E',
+                    # 'TRUE',
+                    '--querytype',
+                    'dna',
+                    '--targettype',
+                    'dna',
+                    '--query',
+                    qtmp.name,
+                    '--target',
+                    genome_file,
+                ]
+                sp.check_call(cmd, stdout=tmp)
+                return list(SearchIO.parse(tmp.name, format))
