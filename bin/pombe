@@ -117,4 +117,7 @@ gm.py hits compare "$selected" "$known" "$compared"
 echo 1>&2 'Writing gff file from comparisions'
 gm.py as gff3 "$compared" "$gff"
 
+echo 1>&2 'Writing missing gff file'
+gm.py comparisions select "$compared" type.pretty is missing - | gm.py as gff3 - data/pombe/missing.gff3
+
 gm.py comparisions summary "$compared" - | tee "$summary" | xsv table
