@@ -172,11 +172,10 @@ def comparisions_select(comparisions, filter, save):
 
 @comparisions.command('extract')
 @click.argument('comparisions', type=ReadablePickleFile())
-@click.argument('property',
-                type=click.Choice(utils.properities_of(Comparision)))
+@click.argument('property')
 @click.argument('save', type=WritablePickleFile())
 @click.option('--skip-missing', is_flag=True, default=False)
-def comparisions_extract(property, comparisions, save, skip_missing=False):
+def comparisions_extract(comparisions, property, save, skip_missing=False):
     """Extract parts of the given comparisions.
     """
     extracted = []

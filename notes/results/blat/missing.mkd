@@ -1,0 +1,129 @@
+---
+title: Missing BLAT hits
+...
+
+# What is missing
+
+There are 3 sequences which are not found by the current searching procedure.
+They are:
+
+[URS0000411182](http://rnacentral.org/rna/URS0000411182/4896)
+  ~ Schizosaccharomyces pombe (fission yeast) antisense RNA, poly(A)-bearing (predicted)
+
+[URS00001B0C99](http://rnacentral.org/rna/URS00001B0C99/4896)
+  ~ Schizosaccharomyces pombe (fission yeast) non-coding RNA, poly(A)-bearing RNA (predicted)
+
+[URS0000156566](http://rnacentral.org/rna/URS0000156566/4896)
+  ~ Schizosaccharomyces pombe (fission yeast) antisense RNA (predicted) 
+
+[URS00005D2A8E](http://rnacentral.org/rna/URS00005D2A8E/4896)
+  ~ Schizosaccharomyces pombe (fission yeast) 18S ribosomal RNA
+
+and the locations are in [missing.gff3](data/pombe/missing.gff3) which are:
+
+```gff3
+##gff-version 3
+I	RNAcentral	transcript	434104	434843	.	+	.	type=misc_RNA;ID=CU329670.1:434104..434843:misc_RNA;Name=URS0000411182
+I	RNAcentral	noncoding_exon	434104	434267	.	+	.	type=misc_RNA;ID=CU329670.1:434104..434843:misc_RNA_exon1;Parent=CU329670.1:434104..434843:misc_RNA;Name=URS0000411182
+I	RNAcentral	noncoding_exon	434338	434843	.	+	.	type=misc_RNA;ID=CU329670.1:434104..434843:misc_RNA_exon2;Parent=CU329670.1:434104..434843:misc_RNA;Name=URS0000411182
+I	RNAcentral	noncoding_exon	2327550	2327629	.	-	.	type=misc_RNA;ID=CU329670.1:2327258..2327629:misc_RNA_exon2;Parent=CU329670.1:2327258..2327629:misc_RNA;Name=URS00001B0C99
+I	RNAcentral	transcript	2885670	2886783	.	-	.	type=misc_RNA;ID=CU329670.1:2885670..2886792:misc_RNA;Name=URS0000156566
+III	RNAcentral	transcript	1	1390	.	-	.	type=rRNA;ID=CU329672.1:1..1390:rRNA;Name=URS00005D2A8E
+```
+Note how the exons are listed for each sequence as well. 
+
+First of all the fact that 3 of these are predicted is nice. I'd rather miss a
+predicted gene than a real one. However the missing rRNA gene is very puzzling.
+
+From here I checked to see if they all have a near exact hit and then do:
+
+```sh
+$ gm.py hits best-within data/pombe/initial-hits.pickle data/pombe/missing.gff3 1000 - | gm.py comparisions summary - - | xsv table
+correct_5p_shift  correct_enclose  correct_exact  incorrect_3p_disjoint  incorrect_3p_shift  incorrect_5p_disjoint  incorrect_5p_shift  incorrect_enclose  incorrect_within
+2                 1                2              24                     1                   37                     1                   17                 9
+```
+
+And it seems that everything is found actually. That is good. Let's look at at
+all the 'correct' hits.
+
+```sh
+$ gm.py hits best-within data/pombe/initial-hits.pickle data/pombe/missing.gff3 1000 - | gm.py comparisions select - type.match is correct - | gm.py comparisions extract - hit - | gm.py pp -
+[Hit(name='URS0000411182', chromosome='I', start=434103, stop=434843, is_forward=True, input_sequence=SequenceSummary(uri='URS0000411182', id='URS0000411182', header='URS0000411182 I:434103-434843(+)'), stats=Stats(identical=670, identity=100.0, gaps=1, query_length=670, hit_length=740)),
+ Hit(name='URS0000411182', chromosome='I', start=434103, stop=434843, is_forward=True, input_sequence=SequenceSummary(uri='URS0000411182', id='URS0000411182', header='URS0000411182 I:434103-434843(+)'), stats=Stats(identical=670, identity=100.0, gaps=1, query_length=670, hit_length=740)),
+ Hit(name='URS0000411182', chromosome='I', start=434103, stop=434843, is_forward=True, input_sequence=SequenceSummary(uri='URS0000411182', id='URS0000411182', header='URS0000411182 I:434103-434843(+)'), stats=Stats(identical=670, identity=100.0, gaps=1, query_length=670, hit_length=740)),
+ Hit(name='URS00001B0C99', chromosome='I', start=2327257, stop=2327629, is_forward=True, input_sequence=SequenceSummary(uri='URS00001B0C99', id='URS00001B0C99', header='URS00001B0C99 I:2327257-2327629(-)'), stats=Stats(identical=321, identity=100.0, gaps=1, query_length=321, hit_length=372)),
+ Hit(name='URS00005D2A8E', chromosome='III', start=0, stop=1390, is_forward=True, input_sequence=SequenceSummary(uri='URS00005D2A8E', id='URS00005D2A8E', header='URS00005D2A8E III:0-1390(-), III:0-1390(-)'), stats=Stats(identical=1389, identity=100.0, gaps=0, query_length=1390, hit_length=1390))]
+```
+
+Well not everything is found. I am missing `URS0000156566`. Looking at this
+shows that there is a small (2 base!) exon at the end that is probably causing
+the problems. Let's see what hits there are:
+
+```sh
+$ gm.py pp data/pombe/initial-hits.pickle | grep 'URS0000156566'
+```
+
+This produces no output. Thus no hits. Meaning that any hit that exists is <
+90% identity. The hits all do have very high identity (100%) it is just the
+precedence of gaps that prevents them from being selected as good hits. 
+
+Maybe I should not use exact and just use 100% identity. Lets compare:
+
+```sh
+$ xsv table data/pombe/summary.csv
+correct_5p_shift  correct_enclose  correct_exact  correct_within  incorrect_3p_shift  incorrect_5p_shift  incorrect_enclose  incorrect_exact  incorrect_within  missing  novel
+1                 2                1882           4               1                   20                  13                 6                40                6        16
+$ gm.py hits select data/pombe/initial-hits.pickle identity - | gm.py hits compare - data/pombe/Schizosaccharomyces_pombe.ASM294v2.gff3 - | gm.py comparisions summary - - | xsv table
+correct_3p_shift  correct_5p_shift  correct_enclose  correct_exact  correct_within  incorrect_3p_shift  incorrect_5p_shift  incorrect_UNKNOWN  incorrect_enclose  incorrect_exact  incorrect_within  novel
+3                 28                30               1910           133             176                 311                 15                 2056               74               6329              28577
+```
+
+Let's clean that up a bit:
+
+| Type              | Exact | 100% Identity |
+|:------------------|------:|--------------:|
+| correct_3p_shift  |     0 |             3 | 
+| correct_5p_shift  |     1 |            28 | 
+| correct_enclose   |     2 |            30 | 
+| correct_exact     |  1882 |          1910 | 
+| correct_within    |     4 |           133 | 
+| incorrect_3p_shift|     1 |           176 | 
+| incorrect_5p_shift|    20 |           311 | 
+| incorrect_UNKNOWN |     0 |            15 | 
+| incorrect_enclose |    13 |          2056 | 
+| incorrect_exact   |     6 |            74 | 
+| incorrect_within  |    40 |          6329 | 
+| novel             |    16 |         28577 | 
+
+Table 1: Comparison of using exact matches vs 100% identity.
+
+I don't think 100% identity is a good idea as it increase the 'extra' hits by a
+great deal and only increases the exact hits slightly. The novel hits alone go
+up 100-fold. That is not acceptable. I'll stick with exact hits for now.
+
+Plus looking at the locations shows:
+
+```sh
+$ grep 'URS0000156566' data/pombe/Schizosaccharomyces_pombe.ASM294v2.bed
+? bsweeney@bsweeney-ml ~/ebi/genome-mapping  master ±
+$ grep 'URS0000156566' data/pombe/Schizosaccharomyces_pombe.ASM294v2.gff3
+I	RNAcentral	transcript	2885670	2886783	.	-	.	ID=CU329670.1:2885670..2886792:misc_RNA;Name=URS0000156566;type=misc_RNA
+I	RNAcentral	noncoding_exon	2885670	2886783	.	-	.	ID=CU329670.1:2885670..2886792:misc_RNA_exon1;Name=URS0000156566;Parent=CU329670.1:2885670..2886792:misc_RNA;type=misc_RNA
+```
+
+The second exon doesn't show up in the `.gff3` and we don't have this listed at
+all in the in `.bed` file. So it's ok that this is never found I think.
+
+However, the summary has so many (93) `incorrect` comparisons. I think this is
+because of me not detecting the splicing variants correctly. This is a problem
+I really need to solve. I think I can do it.
+
+Examine each location and see it is a part of another one. If it is just part
+then we can state that the match there is likely a splicing variant of some
+sequence.
+
+This requires me to separate out the high scoring pairs from hits in the way I
+build up hits.
+
+This will be nice since I can then maybe find where things are spliced and do
+some grouping of sequences in this way.

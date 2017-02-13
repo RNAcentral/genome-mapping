@@ -76,9 +76,11 @@ class Mapper(object):
             for hit in result:
                 for fragment in hit:
                     hit_len = fragment.hit_end - fragment.hit_start
+                    identity = getattr(fragment, 'ident_pct', None)
+                    gaps = getattr(fragment, 'gapopen_num', 0)
                     stats = gm.Stats(identical=fragment.ident_num,
-                                     identity=0.0, # fragment.ident_pct,
-                                     gaps=0, # fragment.gapopen_num,
+                                     identity=identity,
+                                     gaps=gaps,
                                      query_length=result.seq_len,
                                      hit_length=hit_len)
 
