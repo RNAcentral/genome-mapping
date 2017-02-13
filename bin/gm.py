@@ -55,7 +55,7 @@ def cli():
 
 
 @cli.command('find')
-@click.argument('genome', type=click.Path(exists=True, readable=True))
+@click.argument('genome', type=click.Path(readable=True))
 @click.argument('targets', type=click.Path(exists=True, readable=True))
 @click.argument('save', type=WritablePickleFile())
 @click.option('--method', default='blat',
@@ -228,14 +228,6 @@ def display(data):
     Pretty print data to stdout.
     """
     pprint(data)
-
-
-@cli.command('intervals')
-@click.argument('features', type=click.Path(exists=True, readable=True))
-@click.argument('save', type=WritablePickleFile())
-def intervals(features, save):
-    tree = Tree(features)
-    save(tree.trees)
 
 
 if __name__ == '__main__':
