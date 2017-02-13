@@ -37,7 +37,7 @@ IS_TUPLE = is_a(tuple)
 
 @attr.s(frozen=True, slots=True)
 class SequenceSummary(object):
-    upi = attr.ib(validator=IS_STR)
+    uri = attr.ib(validator=IS_STR)
     id = attr.ib(validator=IS_STR)
     header = attr.ib(validator=IS_STR)
 
@@ -62,8 +62,8 @@ class Hit(object):
     stats = attr.ib(validator=is_a(Stats))
 
     @property
-    def upi(self):
-        return self.input_sequence.upi
+    def uri(self):
+        return self.input_sequence.uri
 
 
 @attr.s(frozen=True, slots=True)
@@ -85,7 +85,7 @@ class ComparisionType(object):
         if not hit:
             return cls(location=None, match='missing', pretty='missing')
 
-        if hit.upi == feature.attributes['Name'][0]:
+        if hit.uri == feature.attributes['Name'][0]:
             match_type = 'correct'
         else:
             match_type = 'incorrect'
@@ -137,6 +137,10 @@ class Shift(object):
     @property
     def total(self):
         return abs(self.start) + abs(self.stop)
+
+    def same_chromosome(self):
+        return self.start.start != float('-inf') and \
+            self.start.stop != float('inf')
 
     def is_exact(self):
         return (not self.start and not self.stop) or \
