@@ -1,5 +1,5 @@
 ---
-title: Blat results
+title: Extra Blat Hits
 ...
 
 # Exploring Extra hits
