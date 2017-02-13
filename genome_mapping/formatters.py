@@ -46,7 +46,7 @@ class Gff3(Base):
 
     def format_hit(self, hit, hit_type=None, **extra):
         attributes = {
-            'Name': hit.input_sequence.upi,
+            'Name': hit.input_sequence.uri,
             'Header': hit.input_sequence.header,
             'Identity': hit.stats.identity,
             'HitSize': hit.stats.hit_length,
