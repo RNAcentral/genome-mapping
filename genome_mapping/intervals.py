@@ -11,18 +11,14 @@ from genome_mapping.data import Hit
 from genome_mapping.data import Comparision
 
 
-def feature_upi(feature):
-    return feature.attributes['Name'][0]
-
-
-def upi_of(data):
+def uri_of(data):
     if isinstance(data, Interval):
-        return upi_of(data.data)
+        return uri_of(data.data)
     if isinstance(data, Hit):
-        return data.upi
+        return data.uri
     if isinstance(data, gff.Feature):
-        return feature_upi(data)
-    raise ValueError("No way to get UPI")
+        return data.attributes['Name'][0]
+    raise ValueError("No way to get uri")
 
 
 class Tree(object):
@@ -32,9 +28,9 @@ class Tree(object):
         self.locations = coll.defaultdict(list)
         for (start, stop), feature in self.intervals():
             self.trees[feature.seqid].append(Interval(start, stop, feature))
-            for name in feature.attributes['Name']:
-                name = re.sub('_\d+$', '', name)
-                self.locations[name].append(feature)
+            for uri in feature.attributes['Name']:
+                uri = re.sub('_\d+$', '', uri)
+                self.locations[uri].append(feature)
 
         for chromosome, intervals in self.trees.items():
             self.trees[chromosome] = IntervalTree(intervals)
@@ -42,7 +38,7 @@ class Tree(object):
     def intervals(self):
         def as_key(feature):
             getter = op.attrgetter('seqid', 'start', 'end')
-            return tuple([feature_upi(feature), getter(feature)])
+            return tuple([uri_of(feature), getter(feature)])
 
         seen = set()
         for feature in self.db.all_features():
@@ -60,9 +56,9 @@ class Tree(object):
     def search(self, start, stop):
         return {i.data for i in self.tree.search(start, stop)}
 
-    def find(self, upi):
-        upi = re.sub('_\d+$', '', upi)
-        return self.locations[upi]
+    def find(self, uri):
+        uri = re.sub('_\d+$', '', uri)
+        return self.locations[uri]
 
     def compare_to_known(self, hits, reduce_duplicates=True,
                          ignore_missing_chromosome=True):
@@ -80,9 +76,9 @@ class Tree(object):
                 continue
 
             if reduce_duplicates and len(intervals) > 1:
-                upi = upi_of(hit)
+                uri = uri_of(hit)
                 seen.update(intervals)
-                limited = [i for i in intervals if upi_of(i) == upi]
+                limited = [i for i in intervals if uri_of(i) == uri]
                 if limited:
                     intervals = limited
 
