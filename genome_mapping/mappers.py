@@ -183,21 +183,23 @@ class BlatMapper(Mapper):
         """
 
         options = self.default_options
-        with tempfile.NamedTemporaryFile(suffix='.psl') as tmp:
-            with tempfile.NamedTemporaryFile(suffix='.fa') as qtmp:
-                SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
+        with tempfile.NamedTemporaryFile(suffix='.psl') as psl:
+            with tempfile.NamedTemporaryFile(suffix='.fa') as query:
+                sequences = list(self.sequences(query_path))
+                SeqIO.write(sequences, query, 'fasta')
+                query.flush()
                 cmd = [
                     self.path,
                     '-t=dna',
                     'q=rna',
                 ] + options + [
                     genome_file,
-                    qtmp.name,
-                    tmp.name,
+                    query.name,
+                    psl.name,
                 ]
                 with open('/dev/null', 'wb') as null:
-                    sp.check_call(cmd, stdout=null)
-                return list(SearchIO.parse(tmp.name, 'blat-psl'))
+                    sp.check_call(cmd, stderr=null, stdout=null)
+                return list(SearchIO.parse(psl.name, 'blat-psl'))
 
 
 class BlastMapper(Mapper):
