@@ -2,6 +2,8 @@
 larger target sequence (RNA sequences mapped to genomes or chromosomes). All
 Mappers are expected to be callable objects. """
 
+from __future__ import division
+
 import re
 import sys
 import tempfile
@@ -48,6 +50,7 @@ class Mapper(object):
                     id=sequence.id,
                     uri=uri,
                     header=sequence.description,
+                    length=len(sequence),
                 )
                 yield sequence
 
@@ -74,25 +77,72 @@ class Mapper(object):
         for result in matches:
             sequence = self.lookup_sequence(result)
             for hit in result:
-                for fragment in hit:
-                    hit_len = fragment.hit_end - fragment.hit_start
-                    identity = getattr(fragment, 'ident_pct', None)
-                    gaps = getattr(fragment, 'gapopen_num', 0)
-                    stats = gm.Stats(identical=fragment.ident_num,
-                                     identity=identity,
-                                     gaps=gaps,
-                                     query_length=result.seq_len,
-                                     hit_length=hit_len)
+                for hsp_index, hsp in enumerate(hit):
+                    subhits = []
+                    for frag_index, fragment in enumerate(hsp):
 
-                    start, end = sorted([fragment.hit_start, fragment.hit_end])
+                        frag_gaps = gm.PairStat(
+                            query=hsp.query_gap_num,
+                            hit=hsp.hit_gap_num
+                        )
+                        assert frag_gaps.hit >= 0
+                        assert frag_gaps.query >= 0
+
+                        frag_length = gm.PairStat(
+                            query=fragment.query_span,
+                            hit=fragment.hit_span,
+                        )
+                        assert frag_length.hit >= 0, "Bad %s" % frag_length
+                        assert frag_length.query >= 0, "Bad %s" % frag_length
+
+                        frag_completeness = gm.PairStat(
+                            query=frag_length.query / result.seq_len,
+                            hit=-1,
+                        )
+
+                        start, end = sorted([hsp.hit_start, hsp.hit_end])
+
+                        name = "{urs} ({cur_hsp}/{total_hsp}) ({cur_frag}/{total_frag})".format(
+                            urs=result.id,
+                            cur_hsp=hsp_index + 1,
+                            total_hsp=len(hit),
+                            cur_frag=frag_index + 1,
+                            total_frag=len(hsp))
+
+                        subhits.append(gm.Fragment(
+                            name=name,
+                            chromosome=hit.id,
+                            start=start,
+                            stop=end,
+                            is_forward=fragment.hit_strand == 1,
+                            stats=gm.Stats(
+                                total_gaps=frag_gaps.total,
+                                gaps=frag_gaps,
+                                length=frag_length,
+                                completeness=frag_completeness,
+                            )))
+
+                    stats = [s.stats for s in subhits]
+
+                    assert len({s.is_forward for s in subhits}) == 1
+                    assert len(set(s.chromosome for s in subhits)) == 1
+                    assert 0 < sum(s.length.query for s in stats) <= sequence.length
+                    assert 0 <= sum(s.completeness.query for s in stats) <= 1
+
                     yield gm.Hit(
-                        name=result.id,
+                        urs=result.id,
                         chromosome=hit.id,
-                        start=start,
-                        stop=end,
-                        is_forward=fragment[0].hit_strand == 1,
+                        start=-1,
+                        stop=-1,
+                        fragments=subhits,
+                        is_forward=subhits[0].is_forward,
                         input_sequence=sequence,
-                        stats=stats)
+                        stats=gm.Stats(
+                            total_gaps=sum(s.total_gaps for s in stats),
+                            gaps=gm.PairStat(query=-1, hit=-1),
+                            length=gm.PairStat(query=-1, hit=-1),
+                            completeness=gm.PairStat(query=-1, hit=-1),
+                        ))
 
     def __call__(self, genome_file, query_file):
         """Perform the mapping. This takes a genome_file and a list of
@@ -182,7 +232,7 @@ class BlatMapper(Mapper):
             BioPython.
         """
 
-        options = self.default_options
+        options = sorted(set(options + self.default_options))
         with tempfile.NamedTemporaryFile(suffix='.psl') as psl:
             with tempfile.NamedTemporaryFile(suffix='.fa') as query:
                 sequences = list(self.sequences(query_path))

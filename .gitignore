@@ -5,3 +5,5 @@ summary.csv
 compared.gff3
 *.fai
 missing.gff3
+tmp/
+todo

@@ -48,10 +48,8 @@ class Gff3(Base):
         attributes = {
             'Name': hit.input_sequence.uri,
             'Header': hit.input_sequence.header,
-            'Identity': hit.stats.identity,
-            'HitSize': hit.stats.hit_length,
-            'QuerySize': hit.stats.query_length,
-            'Gaps': hit.stats.gaps,
+            'HitSize': hit.stats.length.hit,
+            'QuerySize': hit.stats.length.query,
         }
         attributes.update(extra or {})
 

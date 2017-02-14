@@ -69,9 +69,9 @@ getfasta "$genome" "$bed" > "$targets"
 
 cat 1>&2 <<EOF
 Ignoring MD5 hashes for silva sequences. As the sequence extracted from the
-given range and the given sequence one differ leading to the the computed
-hashes will differ. This means that we will fail the hash check because we
-assign the same UPI to different sequences in the case of silva. The ranges are
+given range and the given sequence differ, this leads to the the computed
+hashes differing. Means that we will fail the hash check because we assign the
+same URS to different sequences, but only in the case of silva. The ranges are
 correct, while the given sequences are not, thus we ignore the computed hashes
 in this case.
 EOF
@@ -119,5 +119,11 @@ gm.py as gff3 "$compared" "$gff"
 
 echo 1>&2 'Writing missing gff file'
 gm.py comparisions select "$compared" type.pretty is missing - | gm.py as gff3 - data/pombe/missing.gff3
+
+echo 1>&2 'Writing gff file of novel locations'
+gm.py comparisions select $compared type.pretty is novel - | gm.py as gff3 - data/pombe/novel.gff3
+
+echo 1>&2 'Writing gff file of incorrect locations'
+gm.py comparisions select $compared type.match is incorrect - | gm.py comparisions extract - hit - | gm.py as gff3 - data/pombe/incorrect.gff3
 
 gm.py comparisions summary "$compared" - | tee "$summary" | xsv table

@@ -40,23 +40,34 @@ class SequenceSummary(object):
     uri = attr.ib(validator=IS_STR)
     id = attr.ib(validator=IS_STR)
     header = attr.ib(validator=IS_STR)
+    length = attr.ib(validator=IS_INT)
+
+
+@attr.s(frozen=True, slots=True)
+class PairStat(object):
+    query = attr.ib(validator=IS_NUM)
+    hit = attr.ib(validator=IS_NUM)
+
+    @property
+    def total(self):
+        return self.query + self.hit
 
 
 @attr.s(frozen=True, slots=True)
 class Stats(object):
-    identical = attr.ib(validator=IS_INT)
-    identity = attr.ib(validator=IS_FLOAT)
-    gaps = attr.ib(validator=IS_INT)
-    query_length = attr.ib(validator=IS_INT)
-    hit_length = attr.ib(validator=IS_INT)
+    total_gaps = attr.ib(validator=IS_INT)
+    gaps = attr.ib(validator=is_a(PairStat))
+    length = attr.ib(validator=is_a(PairStat))
+    completeness = attr.ib(validator=is_a(PairStat))
 
 
 @attr.s(frozen=True, slots=True)
 class Hit(object):
-    name = attr.ib(validator=IS_STR)
+    urs = attr.ib(validator=IS_STR)
     chromosome = attr.ib(validator=IS_STR)
     start = attr.ib(validator=IS_INT)
     stop = attr.ib(validator=IS_INT)
+    fragments = attr.ib(validator=is_a(list))
     is_forward = attr.ib(validator=IS_BOOL)
     input_sequence = attr.ib(validator=is_a(SequenceSummary))
     stats = attr.ib(validator=is_a(Stats))
@@ -64,6 +75,16 @@ class Hit(object):
     @property
     def uri(self):
         return self.input_sequence.uri
+
+
+@attr.s(frozen=True, slots=True)
+class Fragment(object):
+    name = attr.ib(validator=IS_STR)
+    chromosome = attr.ib(validator=IS_STR)
+    start = attr.ib(validator=IS_INT)
+    stop = attr.ib(validator=IS_INT)
+    is_forward = attr.ib(validator=IS_BOOL)
+    stats = attr.ib(validator=is_a(Stats))
 
 
 @attr.s(frozen=True, slots=True)

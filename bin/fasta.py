@@ -72,8 +72,7 @@ def dna_to_rna(fasta, save):
 @main.command('merge-by-id')
 @click.argument('fasta', type=ReadableBioFile('fasta'))
 @click.argument('save', type=WriteableBioFile('fasta'))
-@click.option('--validate-hash', is_flag=True, default=False)
-def merge_by_id(fasta, save, validate_hash):
+def merge_by_id(fasta, save):
     unique = {}
     for record in fasta:
         if record.id not in unique:
@@ -85,6 +84,46 @@ def merge_by_id(fasta, save, validate_hash):
 
     for record in unique.itervalues():
         save(record)
+
+
+@main.command('extract-by-ids')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('targets', nargs=-1)
+@click.argument('save', type=WriteableBioFile('fasta'))
+def extract_by_ids(fasta, targets, save):
+    required = set(t.strip() for t in targets)
+    for record in fasta:
+        if record.id in required:
+            save(record)
+
+
+@main.command('extract-by-id-file')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('targets', type=click.File(mode='rb'))
+@click.argument('save', type=WriteableBioFile('fasta'))
+def extract_by_id_file(fasta, targets, save):
+    required = set(t.strip() for t in targets)
+    for record in fasta:
+        if record.id in required:
+            save(record)
+
+
+@main.command('count')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('save', type=click.File(mode='wb'))
+def count(fasta, save):
+    count = 0
+    for seq in fasta:
+        count += 1
+    save.write(count + "\n")
+
+
+@main.command('slice')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('range', type=click.File(mode='rb'))
+@click.argument('save', type=WriteableBioFile('fasta'))
+def slice(fasta, range, save):
+    pass
 
 
 if __name__ == '__main__':

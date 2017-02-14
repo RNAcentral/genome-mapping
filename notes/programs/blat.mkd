@@ -20,6 +20,7 @@ Below are the results from the [blat server](http://genome.ucsc.edu/cgi-bin/hgBl
 
 # BLAT Search Results
 
+```
    ACTIONS      QUERY           SCORE START  END QSIZE IDENTITY CHRO STRAND  START    END      SPAN
 ---------------------------------------------------------------------------------------------------
 browser details YourSeq           93     1    93    93 100.0%     8   +   66113367  66113459     93
@@ -53,6 +54,7 @@ browser details YourSeq           32     2    37    93  94.5%    17   +   462293
 browser details YourSeq           27     5    33    93  96.6%    14   -   20630479  20630507     29
 browser details YourSeq           24     6    33    93  92.9%    11   +  124700256 124700283     28
 browser details YourSeq           21    16    36    93 100.0%     1   -  180051243 180051263     21
+```
 
 That is the first genomic position (8:66,113,367-66,113,459:1) is found, while
 the second match (AC090195.5:9,180-9,272:1)is not. In addition, we see an
