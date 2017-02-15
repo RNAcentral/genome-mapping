@@ -13,7 +13,6 @@ from genome_mapping import mappers
 from genome_mapping import matchers
 from genome_mapping import formatters
 from genome_mapping.intervals import Tree
-from genome_mapping.data import Comparision
 from genome_mapping.data import RESULT_TYPE
 
 
@@ -161,11 +160,14 @@ def comparisions_select(comparisions, filter, save):
     ast = compile(processed, '<string>', mode='eval')
 
     def checker(obj):
+        def hashable(name):
+            return isinstance(getattr(obj, name), coll.Hashable)
+
         fields = utils.properities_of(obj.__class__)
-        locals = {(f, getattr(obj, f)) for f in fields}
+        locals = {(f, getattr(obj, f)) for f in fields if hashable(f)}
         each = it.chain.from_iterable(t.split('_') for t in RESULT_TYPE)
         locals.update((t, t) for t in it.chain(RESULT_TYPE, each))
-        return eval(ast, globals(), dict(locals))
+        return eval(ast, {}, dict(locals))
 
     save([comp for comp in comparisions if checker(comp)])
 
@@ -200,6 +202,38 @@ def comparisions_summarize(comparisions, save):
     writer.writerow(summary)
 
 
+@comparisions.group('group')
+def comparisions_group():
+    pass
+
+
+@comparisions_group.command('by-hit-urs')
+@click.argument('comparisions', type=ReadablePickleFile())
+@click.argument('save', type=WritablePickleFile())
+def comparisions_group_hit_urs(comparisions, save):
+    def key(comparision):
+        if comparision.hit:
+            return comparision.hit.urs
+        return None
+    ordered = sorted(comparisions, key=key)
+    groups = it.groupby(ordered, key)
+    save({urs: list(comps) for urs, comps in groups})
+
+
+@comparisions_group.command('summarize-types')
+@click.argument('grouped', type=ReadablePickleFile())
+@click.argument('save', type=click.File(mode='wb'))
+def comparisions_group_summary_type(grouped, save):
+    header = ['urs'] + list(RESULT_TYPE)
+    writer = csv.DictWriter(save, header)
+    writer.writeheader()
+    for urs, hits in grouped.iteritems():
+        entry = coll.defaultdict(int)
+        entry['urs'] = urs
+        entry.update(coll.Counter(h.type.pretty for h in hits))
+        writer.writerow(entry)
+
+
 @cli.command('as')
 @click.argument('format', type=click.Choice(formatters.known()))
 @click.argument('data', type=ReadablePickleFile())
@@ -227,6 +261,28 @@ def display(data):
     Pretty print data to stdout.
     """
     pprint(data)
+
+
+@cli.command('head')
+@click.argument('data', type=ReadablePickleFile())
+@click.argument('save', type=WritablePickleFile())
+@click.option('--count', type=int, default=10)
+def head(data, save, count):
+    return slice_of(data, 0, count, save)
+
+
+# @cli.command('slice')
+# @click.argument('data', type=ReadablePickleFile())
+# @click.argument('start', type=int, default=0)
+# @click.argument('stop', type=int, default=10)
+# @click.argument('save', type=WritablePickleFile())
+def slice_of(data, start, stop, save):
+    if isinstance(data, (tuple, list)):
+        return save(data[start:stop])
+    if isinstance(data, dict):
+        keys = sorted(data.iterkeys())[start:stop]
+        return save({k: data[k] for k in keys})
+    raise ValueError("Cannot slice given type")
 
 
 if __name__ == '__main__':

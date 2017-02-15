@@ -7,18 +7,8 @@ import gffutils as gff
 from intervaltree import Interval
 from intervaltree import IntervalTree
 
-from genome_mapping.data import Hit
+from genome_mapping.data import urs_of
 from genome_mapping.data import Comparision
-
-
-def uri_of(data):
-    if isinstance(data, Interval):
-        return uri_of(data.data)
-    if isinstance(data, Hit):
-        return data.uri
-    if isinstance(data, gff.Feature):
-        return data.attributes['Name'][0]
-    raise ValueError("No way to get uri")
 
 
 class Tree(object):
@@ -28,9 +18,9 @@ class Tree(object):
         self.locations = coll.defaultdict(list)
         for (start, stop), feature in self.intervals():
             self.trees[feature.seqid].append(Interval(start, stop, feature))
-            for uri in feature.attributes['Name']:
-                uri = re.sub('_\d+$', '', uri)
-                self.locations[uri].append(feature)
+            for urs in feature.attributes['Name']:
+                urs = re.sub('_\d+$', '', urs)
+                self.locations[urs].append(feature)
 
         for chromosome, intervals in self.trees.items():
             self.trees[chromosome] = IntervalTree(intervals)
@@ -38,7 +28,7 @@ class Tree(object):
     def intervals(self):
         def as_key(feature):
             getter = op.attrgetter('seqid', 'start', 'end')
-            return tuple([uri_of(feature), getter(feature)])
+            return tuple([urs_of(feature), getter(feature)])
 
         seen = set()
         for feature in self.db.all_features():
@@ -56,9 +46,9 @@ class Tree(object):
     def search(self, start, stop):
         return {i.data for i in self.tree.search(start, stop)}
 
-    def find(self, uri):
-        uri = re.sub('_\d+$', '', uri)
-        return self.locations[uri]
+    def find(self, urs):
+        urs = re.sub('_\d+$', '', urs)
+        return self.locations[urs]
 
     def compare_to_known(self, hits, reduce_duplicates=True,
                          ignore_missing_chromosome=True):
@@ -70,15 +60,16 @@ class Tree(object):
                 if ignore_missing_chromosome:
                     continue
                 raise ValueError("No tree for chromosome %s" % hit.chromosome)
+
             intervals = tree.search(hit.start, hit.stop)
             if not intervals:
                 compared.append(Comparision.build(hit, None))
                 continue
 
             if reduce_duplicates and len(intervals) > 1:
-                uri = uri_of(hit)
+                urs = urs_of(hit)
                 seen.update(intervals)
-                limited = [i for i in intervals if uri_of(i) == uri]
+                limited = [i for i in intervals if urs_of(i) == urs]
                 if limited:
                     intervals = limited
 

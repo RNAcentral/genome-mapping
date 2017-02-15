@@ -1,6 +1,7 @@
-import json
-
 import attr
+
+import gffutils as gff
+import intervaltree as itt
 
 from attr.validators import optional
 from attr.validators import instance_of as is_a
@@ -26,6 +27,7 @@ RESULT_TYPE = frozenset([
     'missing',
 ])
 
+
 IS_INT = is_a(int)
 IS_FLOAT = is_a(float)
 IS_BOOL = is_a(bool)
@@ -33,11 +35,23 @@ IS_STR = is_a(basestring)
 IS_SET = is_a(set)
 IS_NUM = is_a((int, float))
 IS_TUPLE = is_a(tuple)
+IS_DICT = is_a(dict)
+IS_LIST = is_a(list)
+
+
+def urs_of(data):
+    if hasattr(data, 'urs'):
+        return data.urs
+    if isinstance(data, itt.Interval):
+        return urs_of(data.data)
+    if isinstance(data, gff.Feature):
+        return data.attributes['Name'][0]
+    raise ValueError("No way to get urs")
 
 
 @attr.s(frozen=True, slots=True)
 class SequenceSummary(object):
-    uri = attr.ib(validator=IS_STR)
+    urs = attr.ib(validator=IS_STR)
     id = attr.ib(validator=IS_STR)
     header = attr.ib(validator=IS_STR)
     length = attr.ib(validator=IS_INT)
@@ -52,6 +66,13 @@ class PairStat(object):
     def total(self):
         return self.query + self.hit
 
+    @classmethod
+    def from_summation(cls, pairs):
+        return cls(
+            query=sum(p.query for p in pairs),
+            hit=sum(p.hit for p in pairs)
+        )
+
 
 @attr.s(frozen=True, slots=True)
 class Stats(object):
@@ -60,6 +81,15 @@ class Stats(object):
     length = attr.ib(validator=is_a(PairStat))
     completeness = attr.ib(validator=is_a(PairStat))
 
+    @classmethod
+    def from_summation(cls, stats):
+        return cls(
+            total_gaps=sum(s.total_gaps for s in stats),
+            gaps=PairStat.from_summation(s.gaps for s in stats),
+            length=PairStat.from_summation(s.length for s in stats),
+            completeness=PairStat.from_summation(s.completeness for s in stats),
+        )
+
 
 @attr.s(frozen=True, slots=True)
 class Hit(object):
@@ -67,14 +97,10 @@ class Hit(object):
     chromosome = attr.ib(validator=IS_STR)
     start = attr.ib(validator=IS_INT)
     stop = attr.ib(validator=IS_INT)
-    fragments = attr.ib(validator=is_a(list))
+    fragments = attr.ib(validator=IS_LIST, hash=False)
     is_forward = attr.ib(validator=IS_BOOL)
     input_sequence = attr.ib(validator=is_a(SequenceSummary))
     stats = attr.ib(validator=is_a(Stats))
-
-    @property
-    def uri(self):
-        return self.input_sequence.uri
 
 
 @attr.s(frozen=True, slots=True)
@@ -106,7 +132,7 @@ class ComparisionType(object):
         if not hit:
             return cls(location=None, match='missing', pretty='missing')
 
-        if hit.uri == feature.attributes['Name'][0]:
+        if hit.urs == feature.attributes['Name'][0]:
             match_type = 'correct'
         else:
             match_type = 'incorrect'
@@ -169,27 +195,60 @@ class Shift(object):
 
 
 @attr.s(frozen=True, slots=True)
-class Feature(object):
-    data = attr.ib(validator=optional(IS_TUPLE), hash=False, repr=False)
-    pretty = attr.ib(validator=IS_STR, cmp=False)
+class FeatureData(object):
+    seqid = attr.ib(validator=IS_STR)
+    source = attr.ib(validator=IS_STR)
+    feature_type = attr.ib()
+    start = attr.ib(validator=IS_INT)
+    end = attr.ib(validator=IS_INT)
+    score = attr.ib(validator=IS_STR)
+    strand = attr.ib(validator=IS_STR)
+    frame = attr.ib(validator=IS_STR)
+    attributes = attr.ib(validator=IS_DICT, hash=False)
+    extra = attr.ib(validator=IS_LIST, hash=False)
 
     @classmethod
     def build(cls, feature):
-        pretty = ''
-        data = None
-        if feature is not None:
-            data = list(feature.astuple())
-            data[9] = json.loads(data[9])
-            data[10] = json.loads(data[10])
-            data = tuple(data)
-            pretty = str(feature)
-        return cls(data=data, pretty=pretty)
+        return cls(
+            seqid=feature.seqid,
+            source=feature.source,
+            feature_type=feature.featuretype,
+            start=feature.start,
+            end=feature.end,
+            score=feature.score,
+            strand=feature.strand,
+            frame=feature.frame,
+            attributes=dict(feature.attributes),
+            extra=feature.extra,
+        )
+
+    @property
+    def urs(self):
+        return self.data['Name'][0]
+
+    def as_gff(self):
+        return gff.Feature(
+            seqid=self.seqid,
+            source=self.source,
+            featuretype=self.feature_type,
+            start=self.start,
+            end=self.end,
+            score=self.score,
+            strand=self.strand,
+            frame=self.frame,
+            attributes=self.attributes,
+            extra=self.extra,
+        )
+
+    @property
+    def pretty(self):
+        return str(self.as_gff())
 
 
 @attr.s(frozen=True, slots=True)
 class Comparision(object):
     hit = attr.ib(validator=optional(is_a(Hit)))
-    feature = attr.ib(validator=optional(is_a(Feature)))
+    feature = attr.ib(validator=optional(is_a(FeatureData)))
     shift = attr.ib(validator=is_a(Shift))
     type = attr.ib(validator=is_a(ComparisionType))
 
@@ -200,5 +259,7 @@ class Comparision(object):
 
         shift = Shift.build(hit, feature)
         type = ComparisionType.build(shift, hit, feature)
-        feat = Feature.build(feature)
+        feat = None
+        if feature is not None:
+            feat = FeatureData.build(feature)
         return cls(hit=hit, feature=feat, shift=shift, type=type)

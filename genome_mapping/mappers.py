@@ -45,10 +45,10 @@ class Mapper(object):
                 sequence.seq = sequence.seq.back_transcribe()
 
             if self.valid_sequence(sequence):
-                uri = re.sub('_\d+$', '', sequence.id)
-                self.mapping[uri] = gm.SequenceSummary(
+                urs = re.sub('_\d+$', '', sequence.id)
+                self.mapping[urs] = gm.SequenceSummary(
                     id=sequence.id,
-                    uri=uri,
+                    urs=urs,
                     header=sequence.description,
                     length=len(sequence),
                 )
@@ -132,17 +132,13 @@ class Mapper(object):
                     yield gm.Hit(
                         urs=result.id,
                         chromosome=hit.id,
-                        start=-1,
-                        stop=-1,
+                        start=hsp.hit_start,
+                        stop=hsp.hit_end,
                         fragments=subhits,
                         is_forward=subhits[0].is_forward,
                         input_sequence=sequence,
-                        stats=gm.Stats(
-                            total_gaps=sum(s.total_gaps for s in stats),
-                            gaps=gm.PairStat(query=-1, hit=-1),
-                            length=gm.PairStat(query=-1, hit=-1),
-                            completeness=gm.PairStat(query=-1, hit=-1),
-                        ))
+                        stats=gm.Stats.from_summation(stats),
+                    )
 
     def __call__(self, genome_file, query_file):
         """Perform the mapping. This takes a genome_file and a list of

@@ -81,10 +81,8 @@ class ExactMappingFilter(Base):
     name = 'exact'
 
     def is_valid_hit(self, hit):
-        gaps = sum(f.stats.gaps.query for f in hit.fragments)
-        return hit.stats.length.hit == hit.stats.length.query and \
-            hit.stats.total_gaps == 0 and \
-            gaps == 0
+        return hit.stats.completeness.query == 1 and \
+            hit.stats.gaps.query == 0
 
 
 class PercentIdentityFilter(Base):

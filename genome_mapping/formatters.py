@@ -1,4 +1,5 @@
 import abc
+import csv
 import sys
 import json
 
@@ -34,19 +35,29 @@ class Base(object):
 class Json(Base):
     name = 'json'
 
+    def format(self, data):
+        if attr.has(data.__class__):
+            return attr.asdict(data)
+        if isinstance(data, (tuple, list)):
+            return [self.format(d) for d in data]
+        if isinstance(data, dict):
+            return {k: self.format(v) for k, v in data.iteritems()}
+
+        raise ValueError("Cannot handle this data type")
+
     def __call__(self, data, stream):
-        json.dump([attr.asdict(d) for d in data], stream)
+        return json.dump(self.format(data), stream)
 
 
 class Gff3(Base):
     name = 'gff3'
 
     def format_feature(self, feature):
-        return feature.pretty + '\n'
+        return feature.pretty
 
     def format_hit(self, hit, hit_type=None, **extra):
         attributes = {
-            'Name': hit.input_sequence.uri,
+            'Name': hit.input_sequence.urs,
             'Header': hit.input_sequence.header,
             'HitSize': hit.stats.length.hit,
             'QuerySize': hit.stats.length.query,
@@ -74,22 +85,26 @@ class Gff3(Base):
             strand='+' if hit.is_forward else '-',
             frame='.',
             attributes=normalized,
-        )) + '\n'
+        ))
+
+    def format(self, entry):
+        if isinstance(entry, dat.Hit):
+            yield self.format_hit(entry)
+        elif isinstance(entry, dat.FeatureData):
+            yield self.format_feature(entry)
+        elif isinstance(entry, dat.Comparision):
+            if entry.hit:
+                yield self.format_hit(entry.hit,
+                                      hit_type=entry.type.match,
+                                      type=entry.type.pretty)
+
+                if entry.feature:
+                    yield self.format_feature(entry.feature)
+            raise ValueError('Cannot format all data to gff')
 
     def __call__(self, data, stream):
+        assert isinstance(data, (list, tuple))
         stream.write('##gff-version 3\n')
         for entry in data:
-            if isinstance(entry, dat.Hit):
-                stream.write(self.format_hit(entry))
-            elif isinstance(entry, dat.Feature):
-                stream.write(self.format_feature(entry))
-            elif isinstance(entry, dat.Comparision):
-                if entry.hit:
-                    stream.write(self.format_hit(entry.hit,
-                                                 hit_type=entry.type.match,
-                                                 type=entry.type.pretty))
-
-                if entry.feature.data:
-                    stream.write(self.format_feature(entry.feature))
-            else:
-                raise ValueError('Cannot format all data to gff')
+            for row in self.format(data):
+                stream.write(row + '\n')
