@@ -190,7 +190,7 @@ def comparisions_extract(comparisions, property, save, skip_missing=False):
 @comparisions.command('summary')
 @click.argument('comparisions', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
-def summarize_hits(comparisions, save):
+def comparisions_summarize(comparisions, save):
     """
     Compute a summary of the number of each type of comparisions.
     """
