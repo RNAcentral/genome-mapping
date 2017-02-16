@@ -82,7 +82,7 @@ class ExactMappingFilter(Base):
 
     def is_valid_hit(self, hit):
         return hit.stats.completeness.query == 1 and \
-            hit.stats.gaps.query == 0
+            hit.stats.identical == hit.stats.length.query
 
 
 class PercentIdentityFilter(Base):

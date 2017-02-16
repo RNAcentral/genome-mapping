@@ -52,7 +52,7 @@ grep '^>' silva.fasta | cut -d ' ' -f1 | tr -d '>' > bad-silva
 
 fetch "$remote_md5s" | grep -vf bad-silva > "$md5s"
 
-echo 1>&2 "Determining UPI's missnig from BED file but in gff"
+echo 1>&2 "Determining UPI's missing from BED file but in gff"
 cut -f4 "$bed" | sort -u > bed.upi
 cut -f9 "$known" | tr ';' '\n' | awk -F '=' '{ if ($1 == "Name") print $2 }' | sort -u > gff.upi
 comm -1 -3 bed.upi gff.upi | grep -vf bad-silva > bed-missing.upi
@@ -114,16 +114,16 @@ gm.py hits select "$initial" "$matcher" "$selected"
 echo 1>&2 'Comparing to known locations'
 gm.py hits compare "$selected" "$known" "$compared"
 
-echo 1>&2 'Writing gff file from comparisions'
+echo 1>&2 'Writing gff file from comparisons'
 gm.py as gff3 "$compared" "$gff"
 
 echo 1>&2 'Writing missing gff file'
-gm.py comparisions select "$compared" type.pretty is missing - | gm.py as gff3 - data/pombe/missing.gff3
+gm.py comparisons select "$compared" type.pretty is missing - | gm.py as gff3 - data/pombe/missing.gff3
 
 echo 1>&2 'Writing gff file of novel locations'
-gm.py comparisions select $compared type.pretty is novel - | gm.py as gff3 - data/pombe/novel.gff3
+gm.py comparisons select $compared type.pretty is novel - | gm.py as gff3 - data/pombe/novel.gff3
 
 echo 1>&2 'Writing gff file of incorrect locations'
-gm.py comparisions select $compared type.match is incorrect - | gm.py comparisions extract - hit - | gm.py as gff3 - data/pombe/incorrect.gff3
+gm.py comparisons select $compared type.match is incorrect - | gm.py comparisons extract - hit - | gm.py as gff3 - data/pombe/incorrect.gff3
 
-gm.py comparisions summary "$compared" - | tee "$summary" | xsv table
+gm.py comparisons summary "$compared" - | tee "$summary" | xsv table

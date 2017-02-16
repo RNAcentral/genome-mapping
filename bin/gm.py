@@ -139,20 +139,20 @@ def merge_hits(hits, save):
     save(sorted(set(it.chain.from_iterable(hits))))
 
 
-@cli.group('comparisions')
-def comparisions():
-    """Group of commands dealing with maninpulating comparisions.
+@cli.group('comparisons')
+def comparisons():
+    """Group of commands dealing with maninpulating comparisons.
     """
     pass
 
 
-@comparisions.command('select')
-@click.argument('comparisions', type=ReadablePickleFile())
+@comparisons.command('select')
+@click.argument('comparisons', type=ReadablePickleFile())
 @click.argument('filter', type=str, nargs=-1)
 @click.argument('save', type=WritablePickleFile())
-def comparisions_select(comparisions, filter, save):
+def comparisons_select(comparisons, filter, save):
     """
-    Filter comparisions to only those of the given type(s).
+    Filter comparisons to only those of the given type(s).
     """
 
     replace = {'is': '=='}
@@ -169,19 +169,19 @@ def comparisions_select(comparisions, filter, save):
         locals.update((t, t) for t in it.chain(RESULT_TYPE, each))
         return eval(ast, {}, dict(locals))
 
-    save([comp for comp in comparisions if checker(comp)])
+    save([comp for comp in comparisons if checker(comp)])
 
 
-@comparisions.command('extract')
-@click.argument('comparisions', type=ReadablePickleFile())
+@comparisons.command('extract')
+@click.argument('comparisons', type=ReadablePickleFile())
 @click.argument('property')
 @click.argument('save', type=WritablePickleFile())
 @click.option('--skip-missing', is_flag=True, default=False)
-def comparisions_extract(comparisions, property, save, skip_missing=False):
-    """Extract parts of the given comparisions.
+def comparisons_extract(comparisons, property, save, skip_missing=False):
+    """Extract parts of the given comparisons.
     """
     extracted = []
-    for comparision in comparisions:
+    for comparision in comparisons:
         entry = getattr(comparision, property)
         if skip_missing and not entry:
             continue
@@ -189,41 +189,58 @@ def comparisions_extract(comparisions, property, save, skip_missing=False):
     save(extracted)
 
 
-@comparisions.command('summary')
-@click.argument('comparisions', type=ReadablePickleFile())
+@comparisons.command('summary')
+@click.argument('comparisons', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
-def comparisions_summarize(comparisions, save):
+def comparisons_summarize(comparisons, save):
     """
-    Compute a summary of the number of each type of comparisions.
+    Compute a summary of the number of each type of comparisons.
     """
-    summary = dict(coll.Counter(c.type.pretty for c in comparisions))
+    summary = dict(coll.Counter(c.type.pretty for c in comparisons))
     writer = csv.DictWriter(save, sorted(summary.keys()))
     writer.writeheader()
     writer.writerow(summary)
 
 
-@comparisions.group('group')
-def comparisions_group():
+@comparisons.command('detect-variants')
+@click.argument('comparisons', type=ReadablePickleFile())
+@click.argument('save', type=WritablePickleFile())
+def comparisons_detect_variants(comparisons, save):
+    """Detect an splicing hits that are due to disagreement in locations
+    between splicing variants. For example a location may have the splice
+    variant noted, but the unspliced variant matches there as well.
+    """
+    # For all incorrect_exact matches
+    # Find what the correct urs in the location is
+    # See if there is a correct hit in the location
+    # If in_hit has > 1 fragment and the correct hit has 1 => Spliced match transcript
+    # If in_hit has 1 fragment and the correct has > 1 => transcript match spliced
+    # Else leave alone
     pass
 
 
-@comparisions_group.command('by-hit-urs')
-@click.argument('comparisions', type=ReadablePickleFile())
+@comparisons.group('group')
+def comparisons_group():
+    pass
+
+
+@comparisons_group.command('by-hit-urs')
+@click.argument('comparisons', type=ReadablePickleFile())
 @click.argument('save', type=WritablePickleFile())
-def comparisions_group_hit_urs(comparisions, save):
+def comparisons_group_hit_urs(comparisons, save):
     def key(comparision):
         if comparision.hit:
             return comparision.hit.urs
         return None
-    ordered = sorted(comparisions, key=key)
+    ordered = sorted(comparisons, key=key)
     groups = it.groupby(ordered, key)
     save({urs: list(comps) for urs, comps in groups})
 
 
-@comparisions_group.command('summarize-types')
+@comparisons_group.command('summarize-types')
 @click.argument('grouped', type=ReadablePickleFile())
 @click.argument('save', type=click.File(mode='wb'))
-def comparisions_group_summary_type(grouped, save):
+def comparisons_group_summary_type(grouped, save):
     header = ['urs'] + list(RESULT_TYPE)
     writer = csv.DictWriter(save, header)
     writer.writeheader()

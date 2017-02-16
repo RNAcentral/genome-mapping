@@ -1,66 +1,51 @@
-import re
 import operator as op
 import itertools as it
 import collections as coll
 
 import gffutils as gff
-from intervaltree import Interval
 from intervaltree import IntervalTree
 
 from genome_mapping.data import urs_of
 from genome_mapping.data import Comparision
+from genome_mapping.data import FeatureData
 
 
 class Tree(object):
     def __init__(self, filename):
         self.db = gff.create_db(filename, ':memory:')
-        self.trees = coll.defaultdict(list)
-        self.locations = coll.defaultdict(list)
-        for (start, stop), feature in self.intervals():
-            self.trees[feature.seqid].append(Interval(start, stop, feature))
-            for urs in feature.attributes['Name']:
-                urs = re.sub('_\d+$', '', urs)
-                self.locations[urs].append(feature)
-
-        for chromosome, intervals in self.trees.items():
-            self.trees[chromosome] = IntervalTree(intervals)
+        self.trees = self.__build_tree__(self.intervals())
 
     def intervals(self):
         def as_key(feature):
             getter = op.attrgetter('seqid', 'start', 'end')
             return tuple([urs_of(feature), getter(feature)])
 
-        seen = set()
-        for feature in self.db.all_features():
-            # Simplify intervals to only the most interesting ones.
-            # In cases where a transcript has a *single* exon that has the same
-            # endpoints we don't need the exon by itself, we only want the
-            # transcript then. The ranges are the same and the sequence the
-            # same so using the data isn't helpful.
-            key = as_key(feature)
-            if key in seen:
-                continue
-            seen.add(key)
-            yield (feature.start, feature.stop), feature
+        grouped = coll.defaultdict(list)
+        for feature in self.db.all_features(featuretype='noncoding_exon'):
+            # Group the features by their parent. This is required to merge the
+            # gff3 exons into a single unified feature. This way we can
+            # correclty detect if something is spliced or not. Without this we
+            # end up with many single exons.
+            parent = feature.attributes['Parent'][0]
+            grouped[parent].append(feature)
+
+        for subfeatures in grouped.itervalues():
+            yield FeatureData.build(subfeatures)
 
     def search(self, start, stop):
         return {i.data for i in self.tree.search(start, stop)}
-
-    def find(self, urs):
-        urs = re.sub('_\d+$', '', urs)
-        return self.locations[urs]
 
     def compare_to_known(self, hits, reduce_duplicates=True,
                          ignore_missing_chromosome=True):
         seen = set()
         compared = []
         for hit in hits:
-            tree = self.trees[hit.chromosome]
-            if not tree:
+            if hit.chromosome not in self.trees:
                 if ignore_missing_chromosome:
                     continue
                 raise ValueError("No tree for chromosome %s" % hit.chromosome)
 
+            tree = self.trees[hit.chromosome]
             intervals = tree.search(hit.start, hit.stop)
             if not intervals:
                 compared.append(Comparision.build(hit, None))
@@ -88,7 +73,7 @@ class Tree(object):
         # For each feature search for all hits within max_range of the feature.
         # Then select only the 'best' hits, ie max similarity/completeness
         comparisions = []
-        hit_trees = self.__hits_to_tree__(hits)
+        hit_trees = self.__build_tree__(hits)
         found = set()
         for chromosome, tree in self.trees.iteritems():
             hit_tree = hit_trees[chromosome]
@@ -114,9 +99,9 @@ class Tree(object):
 
         return comparisions
 
-    def __hits_to_tree__(self, hits):
+    def __build_tree__(self, data):
         as_tree = IntervalTree.from_tuples
-        by_chromosome = sorted(hits, key=op.attrgetter('chromosome'))
+        by_chromosome = sorted(data, key=op.attrgetter('chromosome'))
         by_chromosome = it.imap(lambda m: (m.start, m.stop, m), by_chromosome)
         by_chromosome = it.groupby(by_chromosome, lambda i: i[2].chromosome)
         return {k: as_tree(v) for (k, v) in by_chromosome}

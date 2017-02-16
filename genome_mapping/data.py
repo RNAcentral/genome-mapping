@@ -6,6 +6,8 @@ import intervaltree as itt
 from attr.validators import optional
 from attr.validators import instance_of as is_a
 
+UNKNOWN = 'UNKNOWN'
+
 RESULT_TYPE = frozenset([
     'correct_exact',
     'correct_within',
@@ -46,7 +48,7 @@ def urs_of(data):
         return urs_of(data.data)
     if isinstance(data, gff.Feature):
         return data.attributes['Name'][0]
-    raise ValueError("No way to get urs")
+    raise ValueError("No way to get urs of: %s" % data)
 
 
 @attr.s(frozen=True, slots=True)
@@ -77,6 +79,7 @@ class PairStat(object):
 @attr.s(frozen=True, slots=True)
 class Stats(object):
     total_gaps = attr.ib(validator=IS_INT)
+    identical = attr.ib(validator=IS_INT)
     gaps = attr.ib(validator=is_a(PairStat))
     length = attr.ib(validator=is_a(PairStat))
     completeness = attr.ib(validator=is_a(PairStat))
@@ -85,6 +88,7 @@ class Stats(object):
     def from_summation(cls, stats):
         return cls(
             total_gaps=sum(s.total_gaps for s in stats),
+            identical=sum(s.identical for s in stats),
             gaps=PairStat.from_summation(s.gaps for s in stats),
             length=PairStat.from_summation(s.length for s in stats),
             completeness=PairStat.from_summation(s.completeness for s in stats),
@@ -102,6 +106,14 @@ class Hit(object):
     input_sequence = attr.ib(validator=is_a(SequenceSummary))
     stats = attr.ib(validator=is_a(Stats))
 
+    @property
+    def sequence_type(self):
+        if len(self.fragments) == 1:
+            return 'unspliced'
+        if len(self.fragments) > 1:
+            return 'spliced'
+        return UNKNOWN
+
 
 @attr.s(frozen=True, slots=True)
 class Fragment(object):
@@ -117,22 +129,36 @@ class Fragment(object):
 class ComparisionType(object):
     pretty = attr.ib(validator=IS_STR)
     location = attr.ib(validator=optional(IS_STR))
-    match = attr.ib(optional(IS_STR))
+    match = attr.ib(validator=optional(IS_STR))
+    feature_type = attr.ib(validator=optional(IS_STR))
+    hit_type = attr.ib(validator=optional(IS_STR))
 
     @classmethod
     def build(cls, shift, hit, feature):
-        shift_type = '{match_type}_{location_type}'
+        shift_type = '{match_type}_{location_type}_{feature_type}_{hit_type}'
 
         if not hit and not feature:
             raise ValueError("Atleast one of hit and feature must be given")
 
         if not feature:
-            return cls(location='novel', match=None, pretty='novel')
+            return cls(
+                location='novel',
+                match=None,
+                pretty='novel',
+                feature_type=None,
+                hit_type=hit.sequence_type
+            )
 
         if not hit:
-            return cls(location=None, match='missing', pretty='missing')
+            return cls(
+                location=None,
+                match='missing',
+                pretty='missing',
+                feature_type=feature.sequence_type,
+                hit_type=None,
+            )
 
-        if hit.urs == feature.attributes['Name'][0]:
+        if hit.urs == feature.urs:
             match_type = 'correct'
         else:
             match_type = 'incorrect'
@@ -153,13 +179,18 @@ class ComparisionType(object):
             elif shift.start < 0 and shift.stop <= 0:
                 location_type = "5p_shift"
             else:
-                location_type = 'UNKNOWN'
+                location_type = UNKNOWN
 
         return cls(
             pretty=shift_type.format(match_type=match_type,
-                                     location_type=location_type),
+                                     location_type=location_type,
+                                     feature_type=feature.sequence_type,
+                                     hit_type=hit.sequence_type,
+                                     ),
             location=location_type,
             match=match_type,
+            feature_type=feature.sequence_type,
+            hit_type=hit.sequence_type,
         )
 
 
@@ -179,7 +210,7 @@ class Shift(object):
         if not feature:
             return cls.cross_chromosome()
         return cls(start=match.start - feature.start,
-                   stop=match.stop - feature.end)
+                   stop=match.stop - feature.stop)
 
     @property
     def total(self):
@@ -195,12 +226,12 @@ class Shift(object):
 
 
 @attr.s(frozen=True, slots=True)
-class FeatureData(object):
+class FeatureFragment(object):
     seqid = attr.ib(validator=IS_STR)
     source = attr.ib(validator=IS_STR)
-    feature_type = attr.ib()
+    feature_type = attr.ib(validator=IS_STR)
     start = attr.ib(validator=IS_INT)
-    end = attr.ib(validator=IS_INT)
+    stop = attr.ib(validator=IS_INT)
     score = attr.ib(validator=IS_STR)
     strand = attr.ib(validator=IS_STR)
     frame = attr.ib(validator=IS_STR)
@@ -214,7 +245,7 @@ class FeatureData(object):
             source=feature.source,
             feature_type=feature.featuretype,
             start=feature.start,
-            end=feature.end,
+            stop=feature.end,
             score=feature.score,
             strand=feature.strand,
             frame=feature.frame,
@@ -224,7 +255,7 @@ class FeatureData(object):
 
     @property
     def urs(self):
-        return self.data['Name'][0]
+        return self.attributes['Name'][0]
 
     def as_gff(self):
         return gff.Feature(
@@ -232,7 +263,7 @@ class FeatureData(object):
             source=self.source,
             featuretype=self.feature_type,
             start=self.start,
-            end=self.end,
+            end=self.stop,
             score=self.score,
             strand=self.strand,
             frame=self.frame,
@@ -240,9 +271,55 @@ class FeatureData(object):
             extra=self.extra,
         )
 
+
+@attr.s(frozen=True, slots=True)
+class FeatureData(object):
+    chromosome = attr.ib(validator=IS_STR)
+    source = attr.ib(validator=IS_STR)
+    start = attr.ib(validator=IS_INT)
+    stop = attr.ib(validator=IS_INT)
+    strand = attr.ib(validator=IS_STR)
+    fragments = attr.ib(validator=IS_LIST, hash=False)
+
+    @classmethod
+    def build(cls, subfeatures):
+        def value_of(name):
+            possible = {getattr(f, name) for f in subfeatures}
+            if len(possible) > 1:
+                raise ValueError("All FeatureFragment's in a FeatureData must"
+                                 " have singular %s, found %s" %
+                                 (name, possible))
+            return possible.pop()
+
+        assert subfeatures
+        fragments = [FeatureFragment.build(f) for f in subfeatures]
+        return cls(
+            chromosome=value_of('seqid'),
+            source=value_of('source'),
+            start=min(f.start for f in subfeatures),
+            stop=max(f.stop for f in subfeatures),
+            strand=value_of('strand'),
+            fragments=fragments
+        )
+
+    @property
+    def urs(self):
+        return self.fragments[0].urs
+
+    def as_gff(self):
+        return [f.as_gff() for f in self.fragments]
+
     @property
     def pretty(self):
-        return str(self.as_gff())
+        return '\n'.join(str(f) for f in self.as_gff())
+
+    @property
+    def sequence_type(self):
+        if len(self.fragments) == 1:
+            return 'unspliced'
+        if len(self.fragments) > 1:
+            return 'spliced'
+        return UNKNOWN
 
 
 @attr.s(frozen=True, slots=True)
@@ -259,7 +336,4 @@ class Comparision(object):
 
         shift = Shift.build(hit, feature)
         type = ComparisionType.build(shift, hit, feature)
-        feat = None
-        if feature is not None:
-            feat = FeatureData.build(feature)
-        return cls(hit=hit, feature=feat, shift=shift, type=type)
+        return cls(hit=hit, feature=feature, shift=shift, type=type)

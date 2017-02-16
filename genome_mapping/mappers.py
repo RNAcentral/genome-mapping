@@ -117,6 +117,7 @@ class Mapper(object):
                             is_forward=fragment.hit_strand == 1,
                             stats=gm.Stats(
                                 total_gaps=frag_gaps.total,
+                                identical=hsp.ident_num,
                                 gaps=frag_gaps,
                                 length=frag_length,
                                 completeness=frag_completeness,
