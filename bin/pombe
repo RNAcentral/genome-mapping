@@ -28,6 +28,7 @@ extra="$(basename "$extra_genome" '.gz')"
 bed="$(basename "$remote_bed" '.gz')"
 md5s="$(basename "$remote_md5s" '.gz')"
 targets="has-coordinates.fasta"
+missing="$base/no-coordinates.fasta"
 
 sums="$base/md5sums.txt"
 initial="$base/initial-hits.pickle"
@@ -128,5 +129,8 @@ $BIN/gm.py comparisons select $compared type.pretty is novel - | $BIN/gm.py as g
 
 echo 1>&2 'Writing gff file of incorrect locations'
 $BIN/gm.py comparisons select $compared type.match is incorrect - | $BIN/gm.py comparisons extract - hit - | $BIN/gm.py as gff3 - data/pombe/incorrect.gff3
+
+echo 1>&2 'Computing missing locations'
+$BIN/gm.py find "$genome" "$missing" - | $BIN/gm.py hits select - "$matcher" $base/inferred-coordinates.pickle
 
 $BIN/gm.py comparisons summary "$compared" - | tee "$summary" | xsv table
