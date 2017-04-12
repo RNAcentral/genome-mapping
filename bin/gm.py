@@ -1,12 +1,16 @@
 #!/usr/bin/env python -W ignore
 
+import os
 import csv
+import sys
 import pickle
 import itertools as it
 from pprint import pprint
 import collections as coll
 
 import click
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from genome_mapping import utils
 from genome_mapping import mappers

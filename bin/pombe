@@ -1,7 +1,9 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 set -euo pipefail
 IFS=$'\n\t'
+
+BIN="$PWD/bin"
 
 fetch() {
   echo 1>&2 "Fetching $1"
@@ -9,12 +11,12 @@ fetch() {
 }
 
 getfasta() {
-  bedtools getfasta -split -name -s -fi "$1" -bed "$2" | sed 's/::/ /'
+  bedtools getfasta -split -name -s -fi "$1" -bed "$2" -fo - | sed 's/::/ /'
 }
 
 base="$PWD/data/pombe/"
 remote_genome="ftp://ftp.ensemblgenomes.org/pub/current/fungi/fasta/schizosaccharomyces_pombe/dna/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa.gz"
-extra_genome="ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/fasta/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa.gz"
+extra_genome="ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/Schizosaccharomyces_pombe.ASM294v2.30.dna.genome.fa.gz"
 remote_known="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.gff3.gz"
 remote_bed="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.bed.gz"
 remote_md5s='ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral//releases/6.0/md5/md5.tsv.gz'
@@ -39,14 +41,14 @@ pushd "$tmp"
 
 echo 1>&2 'Fetching remote data'
 
-fetch "$remote_bed" | correct-bed.py - $bed
+fetch "$remote_bed" | $BIN/correct-bed.py - $bed
 fetch "$remote_known" > "$known"
 fetch "$remote_genome" > "$genome"
 fetch "$extra_genome" > "$extra"
 
 echo 1>&2 "Finding troublesome silva/URS0000156566 entries"
-grep 'silva' "$known" | gff2bed.py - silva.bed
-grep 'URS0000156566' "$known" | gff2bed.py - - >> silva.bed
+grep 'silva' "$known" | $BIN/gff2bed.py - silva.bed
+grep 'URS0000156566' "$known" | $BIN/gff2bed.py - - >> silva.bed
 getfasta "$genome" silva.bed > silva.fasta
 grep '^>' silva.fasta | cut -d ' ' -f1 | tr -d '>' > bad-silva
 
@@ -59,7 +61,7 @@ comm -1 -3 bed.upi gff.upi | grep -vf bad-silva > bed-missing.upi
 
 echo 1>&2 "Missing $(wc -l bed-missing.upi) entries from bed"
 echo 1>&2 "Appending missing to gff"
-grep -f bed-missing.upi "$known" | gff2bed.py - extra.bed
+grep -f bed-missing.upi "$known" | $BIN/gff2bed.py - extra.bed
 
 echo 1>&2 "Added $(wc -l extra.bed) entries"
 cat extra.bed >> "$bed"
@@ -80,7 +82,8 @@ echo 1>&2 'Checking MD5 sums'
 md5sum -c "$sums"
 
 echo 1>&2 'Validating sequence hashes'
-fasta.py md5 display $targets computed.tsv
+$BIN/fasta.py md5 display $targets computed.tsv
+
 xsv join --no-headers -d '\t' 1 computed.tsv 1 $md5s | cut -d ',' -f1,2,4 > compared-md5.csv
 awk -F ',' '{ if ($2 != $3) print "Sequence", $1, "extracted incorrectly"; }' compared-md5.csv > bad-md5
 cat bad-md5
@@ -89,11 +92,11 @@ cat bad-md5
 echo 1>&2 'All hashes pass'
 
 echo 'Altering targets to RNA'
-fasta.py dna-to-rna "$targets" t
+$BIN/fasta.py dna-to-rna "$targets" t
 mv t "$targets"
 
 echo 'Limiting targets to only unique entries'
-fasta.py merge-by-id "$targets" t
+$BIN/fasta.py merge-by-id "$targets" t
 mv t "$targets"
 
 cp "$bed" "$known" "$genome" "$targets" "$base"
@@ -106,24 +109,24 @@ bed="$base/$bed"
 targets="$base/$targets"
 
 echo 1>&2 'Searching for targets'
-gm.py find "$genome" "$targets" "$initial"
+$BIN/gm.py find "$genome" "$targets" "$initial"
 
 echo 1>&2 'Selecting matching hits'
-gm.py hits select "$initial" "$matcher" "$selected"
+$BIN/gm.py hits select "$initial" "$matcher" "$selected"
 
 echo 1>&2 'Comparing to known locations'
-gm.py hits compare "$selected" "$known" "$compared"
+$BIN/gm.py hits compare "$selected" "$known" "$compared"
 
 echo 1>&2 'Writing gff file from comparisons'
-gm.py as gff3 "$compared" "$gff"
+$BIN/gm.py as gff3 "$compared" "$gff"
 
 echo 1>&2 'Writing missing gff file'
-gm.py comparisons select "$compared" type.pretty is missing - | gm.py as gff3 - data/pombe/missing.gff3
+$BIN/gm.py comparisons select "$compared" type.pretty is missing - | $BIN/gm.py as gff3 - data/pombe/missing.gff3
 
 echo 1>&2 'Writing gff file of novel locations'
-gm.py comparisons select $compared type.pretty is novel - | gm.py as gff3 - data/pombe/novel.gff3
+$BIN/gm.py comparisons select $compared type.pretty is novel - | $BIN/gm.py as gff3 - data/pombe/novel.gff3
 
 echo 1>&2 'Writing gff file of incorrect locations'
-gm.py comparisons select $compared type.match is incorrect - | gm.py comparisons extract - hit - | gm.py as gff3 - data/pombe/incorrect.gff3
+$BIN/gm.py comparisons select $compared type.match is incorrect - | $BIN/gm.py comparisons extract - hit - | $BIN/gm.py as gff3 - data/pombe/incorrect.gff3
 
-gm.py comparisons summary "$compared" - | tee "$summary" | xsv table
+$BIN/gm.py comparisons summary "$compared" - | tee "$summary" | xsv table
