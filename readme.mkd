@@ -6,18 +6,13 @@ of sequence and organism to properly create a mapping.
 
 # Dependencies
 
-This is run as a Docker image. So Docker should handle all issues itself. If
-you want to run this outside of docker, you should read the Dockerfile to see
-what is required.
-
+- bedtools
+- python 2.7
+  - Along with all the packages in requirements.txt
+- [xsv](https://github.com/BurntSushi/xsv)
 
 # Usage
 
-Run docker and attach to the running process
-
 ```sh
-$ docker-compose up --build
-$ docker ps
-# $pid => Some pid
-$ docker attach $pid
+bin/pombe
 ```
