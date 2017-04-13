@@ -2,6 +2,7 @@ import abc
 import csv
 import sys
 import json
+import itertools as it
 
 import attr
 from gffutils import Feature
@@ -108,3 +109,29 @@ class Gff3(Base):
         for entry in data:
             for row in self.format(data):
                 stream.write(row + '\n')
+
+
+class Insertable(Base):
+    name = 'insertable'
+
+    def format(self, data):
+        if isinstance(data, (tuple, list)):
+            return [self.format(d) for d in data]
+        elif isinstance(data, dat.Hit):
+            urs, taxid = data.urs.split('_')
+            return {
+                'urs': urs,
+                'taxid': int(taxid),
+                'exons': self.format(data.fragments)
+            }
+        elif isinstance(data, dat.Fragment):
+            return {
+                'primary_start': data.start + 1,
+                'primary_end': data.stop,
+                'name': data.chromosome,
+                'strand': 1 if data.is_forward else -1
+            }
+        raise ValueError("Cannot handle given data")
+
+    def __call__(self, data, stream):
+        return json.dump(self.format(data), stream)
