@@ -132,5 +132,6 @@ $BIN/gm.py comparisons select $compared type.match is incorrect - | $BIN/gm.py c
 
 echo 1>&2 'Computing missing locations'
 $BIN/gm.py find "$genome" "$missing" - | $BIN/gm.py hits select - "$matcher" $base/inferred-coordinates.pickle
+bin/gm.py as insertable $base/inferred-coordinates.pickle $base/inferred-coordinates.json
 
 $BIN/gm.py comparisons summary "$compared" - | tee "$summary" | xsv table

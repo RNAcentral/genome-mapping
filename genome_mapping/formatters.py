@@ -120,7 +120,7 @@ class Insertable(Base):
         elif isinstance(data, dat.Hit):
             urs, taxid = data.urs.split('_')
             return {
-                'urs': urs,
+                'upi': urs,
                 'taxid': int(taxid),
                 'exons': self.format(data.fragments)
             }
@@ -128,7 +128,7 @@ class Insertable(Base):
             return {
                 'primary_start': data.start + 1,
                 'primary_end': data.stop,
-                'name': data.chromosome,
+                'chromosome': data.chromosome,
                 'strand': 1 if data.is_forward else -1
             }
         raise ValueError("Cannot handle given data")
