@@ -81,13 +81,6 @@ class Mapper(object):
                     subhits = []
                     for frag_index, fragment in enumerate(hsp):
 
-                        frag_gaps = gm.PairStat(
-                            query=hsp.query_gap_num,
-                            hit=hsp.hit_gap_num
-                        )
-                        assert frag_gaps.hit >= 0
-                        assert frag_gaps.query >= 0
-
                         frag_length = gm.PairStat(
                             query=fragment.query_span,
                             hit=fragment.hit_span,
@@ -115,20 +108,16 @@ class Mapper(object):
                             start=start,
                             stop=end,
                             is_forward=fragment.hit_strand == 1,
-                            stats=gm.Stats(
-                                total_gaps=frag_gaps.total,
-                                identical=hsp.ident_num,
-                                gaps=frag_gaps,
+                            stats=gm.FragmentStats(
                                 length=frag_length,
                                 completeness=frag_completeness,
                             )))
 
-                    stats = [s.stats for s in subhits]
-
-                    assert len({s.is_forward for s in subhits}) == 1
-                    assert len(set(s.chromosome for s in subhits)) == 1
-                    assert 0 < sum(s.length.query for s in stats) <= sequence.length
-                    assert 0 <= sum(s.completeness.query for s in stats) <= 1
+                    assert len({h.is_forward for h in subhits}) == 1
+                    assert len(set(h.chromosome for h in subhits)) == 1
+                    assert 0 < sum(h.stats.length.query for h in subhits) <= \
+                        sequence.length
+                    assert 0 <= sum(h.stats.completeness.query for h in subhits) <= 1
 
                     yield gm.Hit(
                         urs=result.id,
@@ -138,7 +127,14 @@ class Mapper(object):
                         fragments=subhits,
                         is_forward=subhits[0].is_forward,
                         input_sequence=sequence,
-                        stats=gm.Stats.from_summation(stats),
+                        stats=gm.Stats.from_summation(
+                            [s.stats for s in subhits],
+                            hsp.ident_num,
+                            gm.PairStat(
+                                query=hsp.query_gap_num,
+                                hit=hsp.hit_gap_num
+                            ),
+                        ),
                     )
 
     def __call__(self, genome_file, query_file):

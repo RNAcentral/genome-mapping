@@ -70,9 +70,10 @@ class PairStat(object):
 
     @classmethod
     def from_summation(cls, pairs):
+        ps = list(pairs)
         return cls(
-            query=sum(p.query for p in pairs),
-            hit=sum(p.hit for p in pairs)
+            query=sum(p.query for p in ps),
+            hit=sum(p.hit for p in ps)
         )
 
 
@@ -85,14 +86,24 @@ class Stats(object):
     completeness = attr.ib(validator=is_a(PairStat))
 
     @classmethod
-    def from_summation(cls, stats):
+    def from_summation(cls, stats, identical, gaps):
+        assert gaps.hit >= 0
+        assert gaps.query >= 0
+
         return cls(
-            total_gaps=sum(s.total_gaps for s in stats),
-            identical=sum(s.identical for s in stats),
-            gaps=PairStat.from_summation(s.gaps for s in stats),
+            total_gaps=gaps.total,
+            identical=identical,
+            gaps=gaps,
             length=PairStat.from_summation(s.length for s in stats),
             completeness=PairStat.from_summation(s.completeness for s in stats),
         )
+
+    def __attrs_post_init__(self):
+        try:
+            assert 0 <= self.completeness.query <= 1
+        except Exception as err:
+            raise ValueError("Invalid Stats object (%s) '%s'" %
+                             (str(self), err))
 
 
 @attr.s(frozen=True, slots=True)
@@ -116,13 +127,32 @@ class Hit(object):
 
 
 @attr.s(frozen=True, slots=True)
+class FragmentStats(object):
+    length = attr.ib(validator=is_a(PairStat))
+    completeness = attr.ib(validator=is_a(PairStat))
+
+    @classmethod
+    def from_summation(cls, stats):
+        return cls(
+            length=PairStat.from_summation(s.length for s in stats),
+            completeness=PairStat.from_summation(s.completeness for s in stats),
+        )
+
+    def assert_validatity(self):
+        assert 0 <= self.completeness.query <= 1, "Bad query completeness"
+
+
+@attr.s(frozen=True, slots=True)
 class Fragment(object):
     name = attr.ib(validator=IS_STR)
     chromosome = attr.ib(validator=IS_STR)
     start = attr.ib(validator=IS_INT)
     stop = attr.ib(validator=IS_INT)
     is_forward = attr.ib(validator=IS_BOOL)
-    stats = attr.ib(validator=is_a(Stats))
+    stats = attr.ib(validator=is_a(FragmentStats))
+
+    def assert_validatity(self):
+        self.stats.assert_validatity()
 
 
 @attr.s(frozen=True, slots=True)

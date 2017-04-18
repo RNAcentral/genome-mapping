@@ -12,6 +12,8 @@ All other filters are expected to inherit from it.
 
 import abc
 import sys
+import operator as op
+import itertools as it
 
 from genome_mapping import utils as ut
 
@@ -88,13 +90,47 @@ class ExactMappingFilter(Base):
 class PercentIdentityFilter(Base):
     name = 'identity'
 
-    def __init__(self, min=100.0, max=100.0):
-        self.min = min
-        self.max = max
+    def __init__(self, min=100.0, max=100.0, completeness=100.0):
+        self.min = float(min)
+        self.max = float(max)
+        self.completeness = float(completeness)
+
+    def identity(self, hit):
+        return 100 * float(hit.stats.identical) / hit.stats.length.query
 
     def is_valid_hit(self, hit):
-        return hit.stats.identity >= self.min and \
-            hit.stats.identity <= self.max
+        if (100 * hit.stats.completeness.query) < self.completeness:
+            return False
+        query_identity = self.identity(hit)
+        assert 0 <= query_identity <= 100, "Query percent %f too large" % query_identity
+        return self.min <= query_identity <= self.max
+
+
+class HighestIdentityFilter(PercentIdentityFilter):
+    name = 'best-match'
+
+    def __init__(self, max_hits=1, **kwargs):
+        self.max_hits = max_hits
+        super(HighestIdentityFilter, self).__init__(**kwargs)
+
+    def best_in_group(self, group):
+        ordered = sorted(group, key=self.identity, reverse=True)
+        best = ordered[0]
+        top_hits = it.takewhile(lambda h: self.identity(h) == best, ordered)
+        top_hits = list(top_hits)
+        if len(top_hits) < self.max_hits:
+            offset = len(top_hits)
+            count = self.max_hits - len(top_hits)
+            top_hits.extend(ordered[offset:count])
+        return top_hits
+
+    def filter_matches(self, hits):
+        grouped = it.ifilter(self.is_valid_hit, hits)
+        grouped = sorted(hits, key=op.attrgetter('urs'))
+        grouped = it.groupby(hits, op.attrgetter('urs'))
+        for _, group in grouped:
+            for hit in self.best_in_group(group):
+                yield hit
 
 
 class PassThroughFilter(Base):
