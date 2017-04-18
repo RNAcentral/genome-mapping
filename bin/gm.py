@@ -103,8 +103,12 @@ def hits_select(hits, matcher, save, define={}):
     Filter out the hits that only pass a match criteria. A match criteria is
     something like 'exact' or sequence identity.
     """
+    definitions = {}
+    for definition in define:
+        definitions.update(definition)
+
     matcher_class = matchers.fetch(matcher)
-    matcher = matcher_class(**(define or {}))
+    matcher = matcher_class(**definitions)
     save(list(matcher.filter_matches(hits)))
 
 
