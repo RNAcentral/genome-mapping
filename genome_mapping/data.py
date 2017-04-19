@@ -125,6 +125,13 @@ class Hit(object):
             return 'spliced'
         return UNKNOWN
 
+    @property
+    def query_identity(self):
+        return 100 * float(self.stats.identical) / self.stats.length.query
+
+    def __attrs_post_init__(self):
+        assert 0 <= self.query_identity <= 100
+
 
 @attr.s(frozen=True, slots=True)
 class FragmentStats(object):

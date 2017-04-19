@@ -20,7 +20,12 @@ extra_genome="ftp://ftp.ebi.ac.uk/pub/databases/pombase/pombe/Chromosome_Dumps/S
 remote_known="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.gff3.gz"
 remote_bed="ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.bed.gz"
 remote_md5s='ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral//releases/6.0/md5/md5.tsv.gz'
-matcher="exact"
+
+matcher="best-match"
+matcher_options=(
+  "--define"
+  "min=99"
+)
 
 known="$(basename "$remote_known" '.gz')"
 genome="$(basename "$remote_genome" '.gz')"
@@ -113,7 +118,7 @@ echo 1>&2 'Searching for targets'
 $BIN/gm.py find "$genome" "$targets" "$initial"
 
 echo 1>&2 'Selecting matching hits'
-$BIN/gm.py hits select "$initial" "$matcher" "$selected"
+$BIN/gm.py hits select "${matcher_options[@]}" "$initial" "$matcher" "$selected"
 
 echo 1>&2 'Comparing to known locations'
 $BIN/gm.py hits compare "$selected" "$known" "$compared"
@@ -131,7 +136,13 @@ echo 1>&2 'Writing gff file of incorrect locations'
 $BIN/gm.py comparisons select $compared type.match is incorrect - | $BIN/gm.py comparisons extract - hit - | $BIN/gm.py as gff3 - data/pombe/incorrect.gff3
 
 echo 1>&2 'Computing missing locations'
-$BIN/gm.py find "$genome" "$missing" - | $BIN/gm.py hits select - "$matcher" $base/inferred-coordinates.pickle
+missing_hits=$base/missing-search.pickle
+$BIN/gm.py find "$genome" "$missing" "$missing_hits"
+$BIN/gm.py hits select "${matcher_options[@]}" "$missing_hits" "$matcher" $base/inferred-coordinates.pickle
 bin/gm.py as insertable $base/inferred-coordinates.pickle $base/inferred-coordinates.json
 
 $BIN/gm.py comparisons summary "$compared" - | tee "$summary" | xsv table
+
+inferred_count=$(jq 'length' $base/inferred-coordinates.json)
+missing_count=$(grep -c '^>' $missing)
+echo "Found $inferred_count coordinates of $missing_count"

@@ -93,33 +93,33 @@ class PercentIdentityFilter(Base):
     def __init__(self, min=100.0, max=100.0, completeness=100.0):
         self.min = float(min)
         self.max = float(max)
-        self.completeness = float(completeness)
-
-    def identity(self, hit):
-        return 100 * float(hit.stats.identical) / hit.stats.length.query
+        self.completeness = float(completeness) / 100.0
 
     def is_valid_hit(self, hit):
-        if (100 * hit.stats.completeness.query) < self.completeness:
-            return False
-        query_identity = self.identity(hit)
-        assert 0 <= query_identity <= 100, "Query percent %f too large" % query_identity
-        return self.min <= query_identity <= self.max
+        return hit.stats.completeness.query >= self.completeness and \
+            self.min <= hit.query_identity <= self.max
 
 
 class HighestIdentityFilter(PercentIdentityFilter):
     name = 'best-match'
 
     def best_in_group(self, group):
-        ordered = sorted(group, key=self.identity, reverse=True)
-        best = self.identity(ordered[0])
-        return it.takewhile(lambda h: self.identity(h) == best, ordered)
+        attr = op.attrgetter('query_identity')
+        ordered = sorted(group, key=attr, reverse=True)
+        best = attr(ordered[0])
+        return it.takewhile(lambda h: attr(h) == best, ordered)
+        # if best == 100:
+        #     return found
+        # return [next(found)]
 
     def filter_matches(self, hits):
+        key = op.attrgetter('urs')
         grouped = it.ifilter(self.is_valid_hit, hits)
-        grouped = sorted(hits, key=op.attrgetter('urs'))
-        grouped = it.groupby(hits, op.attrgetter('urs'))
+        grouped = sorted(grouped, key=key)
+        grouped = it.groupby(grouped, key)
         for _, group in grouped:
             for hit in self.best_in_group(group):
+                assert hit.stats.completeness.query >= self.completeness, hit
                 yield hit
 
 
