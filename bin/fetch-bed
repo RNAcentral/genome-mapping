@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+BIN=$(dirname $0)
+
+$BIN/fetch "$1" | $BIN/correct-bed.py - -

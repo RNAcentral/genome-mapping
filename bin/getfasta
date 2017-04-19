@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+bedtools getfasta -split -name -s -fi "$1" -bed "$2" -fo - | sed 's/::/ /'

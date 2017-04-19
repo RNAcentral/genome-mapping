@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+BIN="$(dirname $0)"
+known="$1"
+grep 'silva' "$known" | $BIN/upi-from-gff

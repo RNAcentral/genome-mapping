@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+BIN="$PWD/bin"
+
+matcher="best-match"
+matcher_options=(
+  "--define"
+  "min=99"
+)
+
+known="$(basename "$remote_known" '.gz')"
+genome="$(basename "$remote_genome" '.gz')"
+bed="$(basename "$remote_bed" '.gz')"
+md5s="$(basename "$remote_md5s" '.gz')"
+targets="has-coordinates.fasta"
+missing="$base/no-coordinates.fasta"
+
+sums="$base/md5sums.txt"
+initial="$base/initial-hits.pickle"
+selected="$base/selected-hits.pickle"
+compared="$base/compared.pickle"
+gff="$base/compared.gff3"
+summary="$base/summary.csv"
+
+tmp="$(mktemp -d)"
+pushd "$tmp"
+
+echo 1>&2 'Fetching remote data'
+
+fetch "$remote_bed" | $BIN/correct-bed.py - $bed
+fetch "$remote_known" > "$known"
+fetch "$remote_genome" > "$genome"
+
+echo 1>&2 "Finding troublesome silva entries"
+grep 'silva' "$known" | $BIN/gff2bed.py - silva.bed
+getfasta "$genome" silva.bed > silva.fasta
+grep '^>' silva.fasta | cut -d ' ' -f1 | tr -d '>' > bad-silva
+
+grep -vf bad-silva "$common_md5s" > "$md5s"
+
+echo 1>&2 "Determining UPI's missing from BED file but in gff"
+cut -f4 "$bed" | sort -u > bed.upi
+cut -f9 "$known" | tr ';' '\n' | awk -F '=' '{ if ($1 == "Name") print $2 }' | sort -u > gff.upi
+comm -1 -3 bed.upi gff.upi | grep -vf bad-silva > bed-missing.upi
+
+echo 1>&2 "Missing $(wc -l bed-missing.upi) entries from bed"
+echo 1>&2 "Appending missing to gff"
+grep -f bed-missing.upi "$known" | $BIN/gff2bed.py - extra.bed
+
+echo 1>&2 "Added $(wc -l extra.bed) entries"
+cat extra.bed >> "$bed"
+
+
+cp "$bed" "$known" "$genome" "$targets" "$base"
+popd
+rm -r "$tmp"
+
+known="$base/$known"
+genome="$base/$genome"
+bed="$base/$bed"
+targets="$base/$targets"
+
+echo 1>&2 'Selecting matching hits'
+$BIN/gm.py hits select "${matcher_options[@]}" "$initial" "$matcher" "$selected"
+
+echo 1>&2 'Computing missing locations'
+missing_hits=$base/missing-search.pickle
+$BIN/gm.py hits select "${matcher_options[@]}" "$missing_hits" "$matcher" $base/inferred-coordinates.pickle

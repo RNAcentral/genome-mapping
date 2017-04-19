@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+#? targets v1.0.0
+
+##? Usage: targets [options] <genome> <bed> <sums>
+##? Summary:
+##?   This will extract sequences from the given genome using the coordinates
+##?   in the provided BED file. This will then validate the sequences to ensure
+##?   they have the same MD5's as in the given md5 file.
+##?
+##? Options:
+##?   --help     Show help options.
+##?   --version  Print program version.
+##?
+##? Arguments
+##?
+##?   genome         Genome file to generate target sequences for
+##?   bed            Bed file of target locations
+##?   sums           File of MD5 sums to validate target sequences with
+
+set -euo pipefail
+IFS=$'\n\t'
+
+_help="$(grep "^##?" "$0" | cut -c 5-)"
+_version="$(grep "^#?"  "$0" | cut -c 4-)"
+eval "$(docopts -h "$_help" -V "$_version" : "$@")"
+
+tmp=$(mktemp)
+tmp_targets=$(mktemp)
+tmp_compared=$(mktemp)
+computed=$(mktemp --suffix='.tsv')
+
+echo 1>&2 'Extracting targets'
+getfasta "$genome" "$bed" > "$tmp_targets"
+
+cat 1>&2 <<EOF
+Ignoring MD5 hashes for silva sequences. As the sequence extracted from the
+given range and the given sequence differ, this leads to the the computed
+hashes differing. Means that we will fail the hash check because we assign the
+same URS to different sequences, but only in the case of silva. The ranges are
+correct, while the given sequences are not, thus we ignore the computed hashes
+in this case.
+EOF
+
+md5sum -c "$sums"
+
+$BIN/fasta.py md5 display $tmp_targets $computed
+
+xsv join --no-headers -d '\t' 1 $computed 1 $md5s |\
+  cut -d ',' -f1,2,4 |\
+  awk -F ',' '{ if ($2 != $3 }' > $tmp_compared
+
+if [[ -s $tmp_compared ]]; then
+  awk -F ',' '{ print "Sequence", $1, "extracted incorrectly"; }' $tmp_compared
+  exit 1
+fi
+
+$BIN/fasta.py dna-to-rna "$targets" - | $BIN/fasta.py merge-by-id - $tmp
+mv $tmp "$targets"

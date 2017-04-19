@@ -1,0 +1,7 @@
+#!/usr/bin/env
+
+set -euo pipefail
+IFS=$'\n\t'
+
+
+bin/missing-from-bed data/celegans/known.bed data/celegans/known.gff3
