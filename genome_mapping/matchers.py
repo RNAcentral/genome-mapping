@@ -109,20 +109,10 @@ class PercentIdentityFilter(Base):
 class HighestIdentityFilter(PercentIdentityFilter):
     name = 'best-match'
 
-    def __init__(self, max_hits=1, **kwargs):
-        self.max_hits = max_hits
-        super(HighestIdentityFilter, self).__init__(**kwargs)
-
     def best_in_group(self, group):
         ordered = sorted(group, key=self.identity, reverse=True)
-        best = ordered[0]
-        top_hits = it.takewhile(lambda h: self.identity(h) == best, ordered)
-        top_hits = list(top_hits)
-        if len(top_hits) < self.max_hits:
-            offset = len(top_hits)
-            count = self.max_hits - len(top_hits)
-            top_hits.extend(ordered[offset:count])
-        return top_hits
+        best = self.identity(ordered[0])
+        return it.takewhile(lambda h: self.identity(h) == best, ordered)
 
     def filter_matches(self, hits):
         grouped = it.ifilter(self.is_valid_hit, hits)
