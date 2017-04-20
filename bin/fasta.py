@@ -118,12 +118,12 @@ def count(fasta, save):
     save.write(count + "\n")
 
 
-@main.command('slice')
+@main.command('uppercase')
 @click.argument('fasta', type=ReadableBioFile('fasta'))
-@click.argument('range', type=click.File(mode='rb'))
 @click.argument('save', type=WriteableBioFile('fasta'))
-def slice(fasta, range, save):
-    pass
+def uppercase(fasta, save):
+    for record in fasta:
+        save(record.upper())
 
 
 if __name__ == '__main__':

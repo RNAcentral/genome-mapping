@@ -2,5 +2,8 @@
 
 set -euo pipefail
 IFS=$'\n\t'
+BIN=$(dirname $0)
 
-bedtools getfasta -split -name -s -fi "$1" -bed "$2" -fo - | sed 's/::/ /'
+bedtools getfasta -split -name -s -fi "$1" -bed "$2" -fo - | \
+  sed 's/::/ /' |\
+  $BIN/fasta.py uppercase - -

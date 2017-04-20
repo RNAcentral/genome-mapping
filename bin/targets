@@ -48,8 +48,8 @@ correct, while the given sequences are not, thus we ignore the computed hashes
 in this case.
 EOF
 
-if [[ -e "$sums" ]]; then
-  md5sum --strict -c "$sums" 1>&2
+if [[ -e "$sums" && -s $sums ]]; then
+  md5sum -c "$sums" 1>&2
 else
   echo 1>&2 "NOT CHECKING SUMS"
 fi
@@ -62,6 +62,7 @@ xsv join --no-headers -d '\t' 1 $computed 1 $md5s |\
 
 if [[ -s $tmp_compared ]]; then
   awk -F ',' '{ print "Sequence", $1, "extracted incorrectly"; }' $tmp_compared 1>&2
+  echo 1>&2 "$(wc -l $tmp_compared | cut -d ' ' -f1) of $(grep -c '^>' $tmp_targets) are incorrect"
   exit 1
 fi
 

@@ -17,3 +17,5 @@ data/*/known.gff3
 data/*/raw.bed
 data/*/targets.bed
 data/*/targets.fasta
+data/*/*.2bit
+data/*/11.ooc
