@@ -1,3 +1,3 @@
-3a1cea7cb25bfc0d4689d2830517aa3e  Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa
-397777522417af3f97e7cc44086dd08e  Schizosaccharomyces_pombe.ASM294v2.gff3
-10447dba74c310e1bacbc3097e1fc170  Schizosaccharomyces_pombe.ASM294v2.bed
+3a1cea7cb25bfc0d4689d2830517aa3e  data/pombe/genome.fasta
+397777522417af3f97e7cc44086dd08e  data/pombe/known.gff3
+10447dba74c310e1bacbc3097e1fc170  data/pombe/targets.bed

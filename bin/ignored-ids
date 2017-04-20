@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+BIN=$(dirname $0)
+
+known=$1
+bad_ids=$2
+
+cat $bad_ids
+grep 'silva' "$known" | $BIN/upi-from-gff '-'

@@ -3,8 +3,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-cut -d '\t' -f9 $1 |\
+if [[ $1 = "-" ]]; then
+  awk '{ print $9 }'
+else
+  awk '{ print $9 }' $1
+fi |\
   tr ';' '\n' |\
   grep 'Name' |\
-  cut -d '=' -f3 |\
+  cut -d '=' -f2 |\
   sort -u

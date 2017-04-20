@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+BIN=$(dirname $0)
+
+md5s=$1
+known=$2
+bad_ids=$3
+
+bad=$(mktemp)
+upis=$(mktemp)
+
+$BIN/ignored-ids $known $bad_ids > $bad
+$BIN/upi-from-gff $known | grep -vf "$bad" > "$upis"
+
+xsv join --no-headers -d '\t' 1 $upis 1 $md5s |\
+  xsv select --no-headers 2,3 |\
+  xsv fmt -t '\t'

@@ -4,6 +4,7 @@ import os
 import csv
 import sys
 import pickle
+import json
 import itertools as it
 from pprint import pprint
 import collections as coll
@@ -107,6 +108,26 @@ def hits_select(hits, matcher, save, define={}):
     for definition in define:
         definitions.update(definition)
 
+    matcher_class = matchers.fetch(matcher)
+    matcher = matcher_class(**definitions)
+    save(list(matcher.filter_matches(hits)))
+
+
+@hits.command('select-using-spec')
+@click.argument('hits', type=ReadablePickleFile())
+@click.argument('spec-file', type=click.File('rb'))
+@click.argument('save', type=WritablePickleFile())
+def hits_select_spec(hits, spec_file, save):
+    """
+    Select hits using the specifications in the given file. The file be a json
+    object with a matcher entry that is the name of the matcher to use. It may
+    also contain a JSON object of definitions to build the matcher with.
+    """
+    spec = json.load(spec_file)
+    matcher = spec['matcher']
+    if matcher not in matchers.known():
+        raise ValueError("Unknown Matcher")
+    definitions = spec.get('definitions', {})
     matcher_class = matchers.fetch(matcher)
     matcher = matcher_class(**definitions)
     save(list(matcher.filter_matches(hits)))

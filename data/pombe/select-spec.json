@@ -1,0 +1,6 @@
+{
+        "matcher": "best-match",
+        "definitions": {
+                "min": 99.0
+        }
+}
