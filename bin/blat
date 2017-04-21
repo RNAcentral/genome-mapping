@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+BIN=$(dirname $0)
+
+BASE_BLAT="blat -noTrimA -fine -minIdentity=0 -minScore=0 -minMatch=1 -maxGap=3 -t=dna -q=rna"
+USER=${USER:-NONE}
+HOST=${HOST:-NONE}
+
+blat_bsub_cmd()
+{
+  genome=$1
+  dir=$2
+  count=$3
+
+  cat <<-EOB
+  #BSUB -cwd $dir
+  #BSUB -J blat_$genome[1-$count]
+  #BSUB -R rusage[mem=4096,tmp=4096]
+  #BSUB -oo output-%J-%I.txt
+  #BSUB -eo error-%J-%I.txt
+
+  filename=\$(printf 'part_%03i.fasta' \$LSB_JOBINDEX)
+  target=\$( find *.split/ -name "*\$filename" )
+  if [[ -z \$target ]]; then
+    echo 1>&2 "Could not find \$filename"
+    exit 1
+  fi
+  $BASE_BLAT $genome \$target \$target.psl
+EOB
+}
+
+job_id_of()
+{
+    grep '^Job' |\
+    tr '<>' '+' |\
+    cut -d '+' -f2
+}
+
+remote_bsub()
+{
+  local genome=$1
+  local dir=$2
+  local count=$3
+  local final=$4
+
+  local remote_dir=$(ssh $USER@$HOST 'mktemp -d -p $RNAC')
+  [ -n "$remote_dir" ] || exit 1
+  scp -r $dir/* $USER@$HOST:$remote_dir
+  job_id="$(blat_bsub_cmd "$genome" "$remote_dir" "$count" | ssh $USER@$HOST "module load rnacentral-standard && bsub" | job_id_of)"
+
+  # while 1; do
+  #   sleep 30;
+  #   status=$(ssh $USER@$HOST "bjobs -o 'stat' $job_id" | tail -n +2)
+  #   if [[ "$status" = "DONE" ]]; then
+  #     scp -r $USER@$HOST:$remote_final/* $dir
+  #     ssh $USER@$HOST "rm -r $remote_dir"
+  #     break
+  #   elif [[ "$status" = "EXIT" ]]; then
+  #     exit 1
+  #   fi
+  # done
+
+}
+
+local_sh()
+{
+  local genome=$1
+  local dir=$2
+  local count=$3
+  local final=$4
+
+  for target in $(ls $dir/*.split/*.fasta); do
+    output=$target.psl
+    echo "$BASE_BLAT $genome $target $output 1>&2"
+  done
+}
+
+genome="$1"
+targets="$2"
+count="$3"
+final=$4
+
+method="local_sh"
+if [[ $USER != "NONE" && $HOST != "NONE" ]]; then
+  method=remote_bsub
+fi
+
+dir="$(mktemp -d)"
+cp $genome $dir
+cp $targets $dir
+
+cd $dir
+genome=$(basename $genome)
+targets=$(basename $targets)
+echo 1>&2 "Fasta files written to $dir"
+seqkit split --by-part $count $targets --two-pass
+
+[ ! -e "$final" ] || rm $final
+$method $genome $dir $count $final
+
+$BIN/merge-psl $dir/**/*.psl > $final
+rm -r $dir
