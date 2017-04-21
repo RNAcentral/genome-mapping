@@ -26,3 +26,10 @@ grep -f $missing "$known" | $BIN/gff2bed.py - $extra
 echo 1>&2 "Added $(wc -l $extra | cut -d ' ' -f1) entries"
 cat $raw
 cat $extra
+
+
+rm $bed_upi
+rm $gff_upi
+rm $ignored
+rm $missing
+rm $extra

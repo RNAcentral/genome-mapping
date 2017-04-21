@@ -67,3 +67,8 @@ if [[ -s $tmp_compared ]]; then
 fi
 
 $BIN/fasta.py dna-to-rna "$tmp_targets" - | $BIN/fasta.py merge-by-id - -
+
+rm $tmp
+rm $tmp_targets
+rm $tmp_compared
+rm $computed

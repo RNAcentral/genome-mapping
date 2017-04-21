@@ -17,3 +17,5 @@ $BIN/upi-from-gff $known | grep -vf "$bad" > "$upis"
 xsv join --no-headers -d '\t' 1 $upis 1 $md5s |\
   xsv select --no-headers 2,3 |\
   xsv fmt -t '\t'
+
+rm $bad $upis
