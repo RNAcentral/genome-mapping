@@ -94,6 +94,24 @@ def hits():
     pass
 
 
+@hits.command('from-format')
+@click.argument('data', type=click.Path(exists=True, readable=True))
+@click.argument('targets', type=click.Path(exists=True, readable=True))
+@click.argument('save', type=WritablePickleFile())
+@click.option('--format',
+              type=click.Choice(mappers.known_formats().keys() + [None]),
+              default=None)
+def format_to_hits(data, targets, save, format=None):
+    if not format:
+        _, ext = os.path.splitext(data)
+        format = ext[1:]
+
+    if format not in mappers.known_formats():
+        raise ValueError("Unknown inferred format %s" % format)
+
+    save(list(mappers.from_format(data, targets, format)))
+
+
 @hits.command('select')
 @click.argument('hits', type=ReadablePickleFile())
 @click.argument('matcher', type=click.Choice(matchers.known()))

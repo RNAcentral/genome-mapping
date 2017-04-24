@@ -51,7 +51,7 @@ EOF
 if [[ -e "$sums" && -s $sums ]]; then
   md5sum -c "$sums" 1>&2
 else
-  echo 1>&2 "NOT CHECKING SUMS"
+  echo 1>&2 "NOT CHECKING SUMS OF GENERATED FILES"
 fi
 
 $BIN/fasta.py md5 display $tmp_targets $computed

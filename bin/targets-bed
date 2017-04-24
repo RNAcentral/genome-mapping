@@ -15,6 +15,7 @@ missing=$(mktemp)
 extra=$(mktemp)
 
 $BIN/ignored-ids $known $bad_ids > "$ignored"
+echo 1>&2 "Ignoring `wc -l $ignored`"
 cut -f4 "$raw" | sort -u > $bed_upi
 $BIN/upi-from-gff $known > $gff_upi
 
@@ -26,7 +27,6 @@ grep -f $missing "$known" | $BIN/gff2bed.py - $extra
 echo 1>&2 "Added $(wc -l $extra | cut -d ' ' -f1) entries"
 cat $raw
 cat $extra
-
 
 rm $bed_upi
 rm $gff_upi

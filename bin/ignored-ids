@@ -8,4 +8,7 @@ known=$1
 bad_ids=$2
 
 cat $bad_ids
-grep 'silva' "$known" | $BIN/upi-from-gff '-'
+
+if grep -m 1 silva "$known"; then
+  grep 'silva' "$known" | $BIN/upi-from-gff '-'
+fi

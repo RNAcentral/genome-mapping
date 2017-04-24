@@ -4,4 +4,4 @@ set -euo pipefail
 IFS=$'\n\t'
 
 head -6 $1
-tail -n +6 $@
+tail --quiet -n +6 $@
