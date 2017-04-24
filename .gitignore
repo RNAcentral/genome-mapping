@@ -20,3 +20,4 @@ data/*/targets.fasta
 data/*/*.2bit
 data/*/11.ooc
 *.psl
+data/fly/genome-raw.fasta
