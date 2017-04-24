@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+IFS=$'\n\t'
+
+genome="$1"
+targets="$2"
+ideal_max="${3:-1000}"
+host=${HOST:-0}
+
+targets_count=$(grep -c '^>' "$targets")
+{
+  cat <<-EOM
+define clamp(min, value, max) {
+  if (value < min) {
+    return min;
+  } else if (value > max) {
+    return max;
+  }
+  return value;
+}
+EOM
+
+if [[ "$host" = "0" ]]; then
+  echo "clamp(0, $targets_count / $ideal_max, 4)"
+else
+  echo "clamp(0, $targets_count / $ideal_max, 100)"
+fi
+} | bc
