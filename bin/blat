@@ -2,11 +2,15 @@
 
 set -euo pipefail
 IFS=$'\n\t'
-BIN=$(dirname $0)
 
-BASE_BLAT="blat -noTrimA -fine -minIdentity=0 -minScore=0 -minMatch=1 -maxGap=3 -t=dna -q=rna"
+BIN=$(dirname $0)
+# BASE_BLAT="blat -noTrimA -fine -minIdentity=0 -minScore=0 -minMatch=1 -maxGap=3 -t=dna -q=rna"
+ALIGN_CMD="${ALIGN_CMD:-blat}"
+ALIGN_OPTS="${ALIGN_OPTS:- -noTrimA -fine -minIdentity=0 -minScore=0 -minMatch=1 -maxGap=3 -t=dna -q=rna}"
+BASE_ALIGN="$ALIGN_CMD $ALIGN_OPTS"
 USER=${USER:-NONE}
 HOST=${HOST:-NONE}
+POLL_FREQUENCY=${POLL:-10}
 
 blat_bsub_cmd()
 {
@@ -27,13 +31,13 @@ blat_bsub_cmd()
     echo 1>&2 "Could not find \$filename"
     exit 1
   fi
-  $BASE_BLAT $genome \$target \$target.psl
+  $BASE_ALIGN $genome \$target \$target.psl
 EOB
 }
 
 job_id_of()
 {
-    grep '^Job' |\
+  grep '^Job' |\
     tr '<>' '+' |\
     cut -d '+' -f2
 }
@@ -44,27 +48,43 @@ remote_bsub()
   local dir=$2
   local count=$3
   local final=$4
+  echo 1>&2 "Running remotely with bsub"
 
   local remote_dir=$(ssh $USER@$HOST 'mktemp -d -p $RNAC')
   [ -n "$remote_dir" ] || exit 1
   scp -r $dir/* $USER@$HOST:$remote_dir
   job_id="$(blat_bsub_cmd "$genome" "$remote_dir" "$count" | ssh $USER@$HOST "module load rnacentral-standard && bsub" | job_id_of)"
+  echo 1>&2 "Running as job $job_id"
 
-  # while 1; do
-  #   sleep 30;
-  #   status=$(ssh $USER@$HOST "bjobs -o 'stat' $job_id" | tail -n +2)
-  #   if [[ "$status" = "DONE" ]]; then
-  #     scp -r $USER@$HOST:$remote_final/* $dir
-  #     ssh $USER@$HOST "rm -r $remote_dir"
-  #     break
-  #   elif [[ "$status" = "EXIT" ]]; then
-  #     exit 1
-  #   fi
-  # done
+  while :; do
+    sleep $POLL_FREQUENCY;
+    status=$(ssh $USER@$HOST "bjobs -o 'stat' $job_id" | tail -n +2 | sort -u)
+    echo $status
+    if [[ "$status" = "DONE" ]]; then
+      rsync -r "$USER@$HOST:$remote_dir/*" $dir
+      ssh $USER@$HOST "rm -r $remote_dir"
+      break
+    elif [[ "$status" = "EXIT" ]]; then
+      exit 1
+    else
+      echo 1>&2 "Waiting on $job_id..."
+    fi
+  done
 
 }
 
-local_sh()
+local_bsub()
+{
+  local genome=$1
+  local dir=$2
+  local count=$3
+  local final=$4
+  echo 1>&2 "Running locally with bsub"
+
+  job_id="$(blat_bsub_cmd "$genome" "$dir" "$count" | job_id_of)"
+}
+
+local_cmds()
 {
   local genome=$1
   local dir=$2
@@ -72,10 +92,22 @@ local_sh()
   local final=$4
 
   for target in $(ls $dir/*.split/*.fasta); do
-    output=$target.psl
-    echo "$BASE_BLAT $genome $target $output 1>&2"
+    echo "$BASE_ALIGN $genome $target $target.psl 1>&2"
   done
 }
+
+local_parallel()
+{
+  echo 1>&2 "Running locally in parallel"
+  local_cmds $@ | parallel -j4
+}
+
+local_sh()
+{
+  echo 1>&2 "Running locally sequentially"
+  local_cmds $@ | sh
+}
+
 
 genome="$1"
 targets="$2"
@@ -85,13 +117,16 @@ final=$4
 method="local_sh"
 if [[ $USER != "NONE" && $HOST != "NONE" ]]; then
   method=remote_bsub
+elif hash bsub 2>/dev/null; then
+  method=local_bsub
+elif hash parallel 2>/dev/null; then
+  method=local_parallel
 fi
 
 dir="$(mktemp -d)"
-cp $genome $dir
-cp $targets $dir
+cp $genome $targets $dir
+pushd $dir
 
-cd $dir
 genome=$(basename $genome)
 targets=$(basename $targets)
 echo 1>&2 "Fasta files written to $dir"
@@ -99,6 +134,7 @@ seqkit split --by-part $count $targets --two-pass
 
 [ ! -e "$final" ] || rm $final
 $method $genome $dir $count $final
+popd
 
 $BIN/merge-psl $dir/**/*.psl > $final
 rm -r $dir
