@@ -5,6 +5,7 @@ Mappers are expected to be callable objects. """
 from __future__ import division
 
 import re
+import abc
 import sys
 import tempfile
 
@@ -28,12 +29,37 @@ def fetch(name):
     return ut.get_child(sys.modules[__name__], Mapper, name)
 
 
+def known_formats():
+    return {m.format: m for m in ut.children_of(sys.modules[__name__], Mapper)}
+
+
+def from_format(filename, target_file, format):
+    mappers = known_formats()
+    mapper = mappers[format]()
+    return mapper.parse_result_file(filename, target_file)
+
+
 class Mapper(object):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self):
         self.mapping = {}
 
+    @abc.abstractmethod
+    def run(self, genome_file, query_file):
+        pass
+
+    @abc.abstractmethod
     def valid_sequence(self, sequence):
         return False
+
+    @abc.abstractproperty
+    def name(self):
+        pass
+
+    @abc.abstractproperty
+    def format(self):
+        pass
 
     def lookup_sequence(self, result):
         upi = re.sub('_\d+$', '', result.id)
@@ -53,6 +79,13 @@ class Mapper(object):
                     length=len(sequence),
                 )
                 yield sequence
+
+    def parse_result_file(self, result_file, target_file):
+        for sequence in self.sequences(target_file):
+            pass
+
+        data = list(SearchIO.parse(result_file, self.format))
+        return self.create_mappings(data)
 
     def create_mappings(self, matches):
         """Create the mappings from the given raw data. The mapping objects in
@@ -169,6 +202,7 @@ class BlatMapper(Mapper):
     """
 
     name = 'blat'
+    format = 'blat-psl'
 
     default_options = [
         '-noTrimA',
@@ -242,11 +276,12 @@ class BlatMapper(Mapper):
                 ]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stderr=null, stdout=null)
-                return list(SearchIO.parse(psl.name, 'blat-psl'))
+                return list(SearchIO.parse(psl.name, self.format))
 
 
 class BlastMapper(Mapper):
     name = 'blast'
+    format = 'blast-xml'
 
     default_options = [
         '-word_size=4',
@@ -279,8 +314,7 @@ class BlastMapper(Mapper):
         """
 
         options = self.default_options
-        format = 'blast-xml'
-        with tempfile.NamedTemporaryFile(suffix='.%s' % format) as tmp:
+        with tempfile.NamedTemporaryFile(suffix='.%s' % self.format) as tmp:
             with tempfile.NamedTemporaryFile(suffix='.fasta', mode='wb') as qtmp:
                 SeqIO.write(self.sequences(query_path), qtmp, 'fasta')
                 cmd = [
@@ -293,11 +327,12 @@ class BlastMapper(Mapper):
                 ]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stdout=null)
-                return list(SearchIO.parse(tmp.name, format))
+                return list(SearchIO.parse(tmp.name, self.format))
 
 
 class ExonerateMapper(Mapper):
     name = 'exonerate'
+    format = 'exonerate-vulgar'
 
     default_options = [
         # '--model',
@@ -315,8 +350,7 @@ class ExonerateMapper(Mapper):
 
     def run(self, genome_file, query_path, options=[]):
         options = self.default_options
-        format = 'exonerate-vulgar'
-        with tempfile.NamedTemporaryFile(suffix='.%s' % format) as tmp:
+        with tempfile.NamedTemporaryFile(suffix='.%s' % self.format) as tmp:
             with tempfile.NamedTemporaryFile(suffix='.fasta') as qtmp:
                 SeqIO.write(self.sequences(query_path, as_dna=True), qtmp, 'fasta')
                 cmd = [
@@ -336,4 +370,4 @@ class ExonerateMapper(Mapper):
                     genome_file,
                 ]
                 sp.check_call(cmd, stdout=tmp)
-                return list(SearchIO.parse(tmp.name, format))
+                return list(SearchIO.parse(tmp.name, self.format))

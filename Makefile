@@ -3,6 +3,8 @@ all_md5=data/md5.tsv
 
 all : pombe zebrafish worm fly
 
+.PRECIOUS: $(all_md5)
+
 ###############################################################################
 # pombe
 ###############################################################################
@@ -12,13 +14,13 @@ pombe : data/pombe/inferred.json data/pombe/summary.csv data/pombe/unknown.fasta
 
 data/pombe/genome.fasta : bin/fetch
 	$^ "ftp://ftp.ensemblgenomes.org/pub/release-35/fungi/fasta/schizosaccharomyces_pombe/dna/Schizosaccharomyces_pombe.ASM294v2.dna.toplevel.fa.gz" > $@
+	[ ! -e data/pombe/genome.fasta.fai ] || rm data/pombe/genome.fasta.fai
 
 data/pombe/known.gff3 : bin/fetch
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.gff3.gz" > $@
 
 data/pombe/raw.bed : bin/fetch-bed
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Schizosaccharomyces_pombe.ASM294v2.bed.gz" > $@
-
 
 ###############################################################################
 # C. elegans
@@ -29,6 +31,7 @@ worm : data/worm/inferred.json data/worm/summary.csv data/worm/unknown.fasta
 
 data/worm/genome.fasta : bin/fetch
 	$^ "ftp://ftp.wormbase.org/pub/wormbase/releases/WS251/species/c_elegans/PRJNA13758/c_elegans.PRJNA13758.WS251.genomic.fa.gz" > $@
+	[ ! -e data/worm/genome.fasta.fai ] || rm data/worm/genome.fasta.fai
 
 data/worm/known.gff3 : bin/fetch
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates/Caenorhabditis_elegans.WBcel235.gff3.gz" > $@
@@ -45,6 +48,7 @@ fly: data/fly/inferred.json data/fly/summary.csv data/fly/unknown.fasta
 
 data/fly/genome.fasta : bin/fetch
 	$^ "ftp://ftp.flybase.net/genomes/Drosophila_melanogaster/dmel_r6.15_FB2017_02/fasta/dmel-all-chromosome-r6.15.fasta.gz" > $@
+	[ ! -e data/fly/genome.fasta.fai ] || rm data/fly/genome.fasta.fai
 
 data/fly/known.gff3 : bin/fetch
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates//Drosophila_melanogaster.BDGP6.gff3.gz" > $@
@@ -52,41 +56,19 @@ data/fly/known.gff3 : bin/fetch
 data/fly/raw.bed : bin/fetch-bed
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates//Drosophila_melanogaster.BDGP6.bed.gz" > $@
 
+data/fly/targets.bed : bin/targets-bed data/fly/raw.bed data/fly/known.gff3 data/fly/bad-ids
+	$^ | sed -e 's|^chr||' -e 's|^dmel_mitochondrion_genome|mitochondrion_genome|' > $@
 
 ###############################################################################
-# Drosophila melanogaster (6,515)
+# Zebrafish
 ###############################################################################
 
 zebrafish: data/zebrafish/inferred.json data/zebrafish/summary.csv data/zebrafish/unknown.fasta
 	@echo "ZEBRAFISH: Found `jq 'length' data/zebrafish/inferred.json` coordinates of `grep -c '^>' data/zebrafish/unknown.fasta`"
 
 data/zebrafish/genome.fasta : bin/fetch
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.1.fa.gz" > $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.2.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.3.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.4.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.5.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.6.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.7.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.8.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.9.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.10.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.11.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.12.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.13.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.14.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.15.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.16.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.17.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.18.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.19.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.20.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.21.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.22.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.23.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.24.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.25.fa.gz" >> $@
-	$^ "ftp://ftp.ensembl.org/pub/release-88/fasta/danio_rerio/dna/Danio_rerio.GRCz10.dna.chromosome.MT.fa.gz" >> $@
+	$^ "ftp://ftp.ensembl.org/pub/release-87/fasta/danio_rerio/dna//Danio_rerio.GRCz10.dna.toplevel.fa.gz" > $@
+	[ ! -e data/zebrafish/genome.fasta.fai ] || rm data/zebrafish/genome.fasta.fai
 
 data/zebrafish/known.gff3 : bin/fetch
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates//Danio_rerio.GRCz10.gff3.gz" > $@
@@ -94,6 +76,8 @@ data/zebrafish/known.gff3 : bin/fetch
 data/zebrafish/raw.bed : bin/fetch-bed
 	$^ "ftp://ftp.ebi.ac.uk/pub/databases/RNAcentral/releases/6.0/genome_coordinates//Danio_rerio.GRCz10.bed.gz" > $@
 
+data/zebrafish/targets.bed : bin/targets-bed data/zebrafish/raw.bed data/zebrafish/known.gff3 data/zebrafish/bad-ids
+	$^ | sed 's|^chr||' > $@
 
 ###############################################################################
 # Generic Definitions
@@ -118,13 +102,17 @@ data/%/targets.bed : bin/targets-bed data/%/raw.bed data/%/known.gff3 data/%/bad
 data/%/targets.fasta : bin/targets data/%/genome.fasta data/%/targets.bed data/%/md5sums.txt data/%/known-md5.txt
 	$^ > $@
 
-data/%/targets-hits.pickle : $(gm) data/%/genome.2bit data/%/targets.fasta
-	date
-	$(gm) find $(word 2,$^) $(word 3,$^) $@
-	date
+data/%/targets.psl : bin/blat data/%/genome.fasta data/%/targets.fasta
+	$(word 1,$^) $(word 2,$^) $(word 3,$^) $(shell bin/job-count $(word 2,$^) $(word 3,$^)) $@
 
-data/%/unknown-hits.pickle : $(gm) data/%/genome.2bit data/%/unknown.fasta
-	$(gm) find $(word 2,$^) $(word 3,$^) $@
+data/%/unknown.psl : bin/blat data/%/genome.fasta data/%/unknown.fasta
+	$(word 1,$^) $(word 2,$^) $(word 3,$^) $(shell bin/job-count $(word 2,$^) $(word 3,$^)) $@
+
+data/%/targets-hits.pickle : $(gm) data/%/targets.psl data/%/targets.fasta
+	$(gm) hits from-format --format='blat-psl' $(word 2,$^) $(word 3,$^) $@
+
+data/%/unknown-hits.pickle : $(gm) data/%/unknown.psl data/%/unknown.fasta
+	$(gm) hits from-format --format='blat-psl' $(word 2,$^) $(word 3,$^) $@
 
 data/%/targets-compared.pickle : $(gm) data/%/targets-selected.pickle data/%/known.gff3
 	$(gm) hits compare $(word 2,$^) $(word 3,$^) $@
