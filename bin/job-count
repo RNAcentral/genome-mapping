@@ -22,8 +22,8 @@ define clamp(min, value, max) {
 EOM
 
 if [[ "$host" = "0" ]]; then
-  echo "clamp(0, $targets_count / $ideal_max, 4)"
+  echo "clamp(1, $targets_count / $ideal_max, 4)"
 else
-  echo "clamp(0, $targets_count / $ideal_max, 100)"
+  echo "clamp(1, $targets_count / $ideal_max, 30)"
 fi
 } | bc
