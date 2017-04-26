@@ -1,0 +1,84 @@
+pombe
+: Simple approach works fine
+
+correct_enclose_unspliced_unspliced       2
+correct_exact_spliced_spliced            27
+correct_exact_unspliced_unspliced      2047
+correct_within_unspliced_unspliced        8
+incorrect_3p_shift_unspliced_unspliced    1
+incorrect_5p_shift_unspliced_unspliced   19
+incorrect_enclose_unspliced_spliced       1
+incorrect_enclose_unspliced_unspliced     8
+incorrect_exact_spliced_spliced           6
+incorrect_exact_spliced_unspliced         6
+incorrect_exact_unspliced_spliced        31
+incorrect_within_unspliced_spliced        1
+incorrect_within_unspliced_unspliced     51
+missing                                   1
+novel                                    16
+
+fly
+: Ok
+
+correct_exact_spliced_spliced          1183
+correct_exact_unspliced_unspliced      2666
+correct_within_spliced_spliced            2
+incorrect_3p_shift_spliced_unspliced      1
+incorrect_5p_shift_unspliced_spliced      9
+incorrect_5p_shift_unspliced_unspliced    7
+incorrect_enclose_unspliced_spliced       9
+incorrect_enclose_unspliced_unspliced     1
+incorrect_exact_unspliced_spliced         8
+incorrect_exact_unspliced_unspliced       2
+incorrect_within_unspliced_spliced        4
+incorrect_within_unspliced_unspliced     25
+missing                                 332
+novel                                    17
+
+zebrafish
+: Very bad
+correct_enclose_unspliced_spliced         19
+correct_enclose_unspliced_unspliced        1
+correct_exact_spliced_spliced             26
+correct_exact_unspliced_unspliced      21149
+incorrect_3p_shift_unspliced_spliced       4
+incorrect_3p_shift_unspliced_unspliced     9
+incorrect_5p_shift_unspliced_spliced     332
+incorrect_5p_shift_unspliced_unspliced   199
+incorrect_UNKNOWN_unspliced_spliced        2
+incorrect_enclose_unspliced_spliced     4162
+incorrect_enclose_unspliced_unspliced     35
+incorrect_exact_unspliced_spliced       1460
+incorrect_within_unspliced_spliced        82
+incorrect_within_unspliced_unspliced     622
+missing                                 4881
+novel                                    364
+
+worm
+: horrible
+
+correct_3p_shift_unspliced_unspliced      22
+correct_5p_shift_spliced_spliced           3
+correct_5p_shift_unspliced_unspliced      32
+correct_enclose_unspliced_spliced          1
+correct_enclose_unspliced_unspliced        1
+correct_exact_spliced_spliced            807
+correct_exact_unspliced_unspliced      10138
+incorrect_3p_shift_unspliced_spliced      14
+incorrect_3p_shift_unspliced_unspliced    62
+incorrect_5p_shift_unspliced_spliced      61
+incorrect_5p_shift_unspliced_unspliced   250
+incorrect_UNKNOWN_unspliced_spliced        2
+incorrect_UNKNOWN_unspliced_unspliced     26
+incorrect_enclose_spliced_spliced         41
+incorrect_enclose_unspliced_spliced      562
+incorrect_enclose_unspliced_unspliced    126
+incorrect_exact_spliced_unspliced          4
+incorrect_exact_unspliced_spliced         47
+incorrect_exact_unspliced_unspliced       44
+incorrect_within_spliced_spliced           2
+incorrect_within_spliced_unspliced        34
+incorrect_within_unspliced_spliced        49
+incorrect_within_unspliced_unspliced     370
+missing                                14966
+novel                                    430
