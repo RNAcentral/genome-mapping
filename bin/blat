@@ -54,12 +54,11 @@ remote_bsub()
   [ -n "$remote_dir" ] || exit 1
   scp -r $dir/* $USER@$HOST:$remote_dir
   job_id="$(blat_bsub_cmd "$genome" "$remote_dir" "$count" | ssh $USER@$HOST "module load rnacentral-standard && bsub" | job_id_of)"
-  echo 1>&2 "Running as job $job_id"
+  echo 1>&2 "Running search as job $job_id"
 
   while :; do
     sleep $POLL_FREQUENCY;
     status=$(ssh $USER@$HOST "bjobs -o 'stat' $job_id" | tail -n +2 | sort -u)
-    echo $status
     if [[ "$status" = "DONE" ]]; then
       rsync -r "$USER@$HOST:$remote_dir/*" $dir
       ssh $USER@$HOST "rm -r $remote_dir"

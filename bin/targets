@@ -31,7 +31,6 @@ bed=$2
 sums=$3
 md5s=$4
 
-tmp=$(mktemp)
 tmp_targets=$(mktemp)
 tmp_compared=$(mktemp)
 computed=$(mktemp --suffix='.tsv')
@@ -59,16 +58,19 @@ $BIN/fasta.py md5 display $tmp_targets $computed
 xsv join --no-headers -d '\t' 1 $computed 1 $md5s |\
   cut -d ',' -f1,2,4 |\
   awk -F ',' '{ if ($2 != $3) print }' > $tmp_compared
+rm $computed
 
 if [[ -s $tmp_compared ]]; then
   awk -F ',' '{ print "Sequence", $1, "extracted incorrectly"; }' $tmp_compared 1>&2
   echo 1>&2 "$(wc -l $tmp_compared | cut -d ' ' -f1) of $(grep -c '^>' $tmp_targets) are incorrect"
+  rm $tmp_compared
+  rm $tmp_targets
   exit 1
 fi
 
-$BIN/fasta.py dna-to-rna "$tmp_targets" - | $BIN/fasta.py merge-by-id - -
+$BIN/fasta.py dna-to-rna "$tmp_targets" - |\
+  $BIN/fasta.py merge-by-id - - |\
+  seqkey seq --min-len 25
+  # $BIN/fasta.py filter-by-size --min 25 - -
 
-rm $tmp
 rm $tmp_targets
-rm $tmp_compared
-rm $computed
