@@ -42,15 +42,12 @@ def from_format(filename, target_file, format):
 class Mapper(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        self.mapping = {}
-
     @abc.abstractmethod
     def run(self, genome_file, query_file):
         pass
 
     @abc.abstractmethod
-    def valid_sequence(self, sequence):
+    def is_valid_sequence(self, sequence):
         return False
 
     @abc.abstractproperty
@@ -61,33 +58,19 @@ class Mapper(object):
     def format(self):
         pass
 
-    def lookup_sequence(self, result):
-        upi = re.sub('_\d+$', '', result.id)
-        return self.mapping[upi]
-
-    def sequences(self, query_file, as_dna=False):
+    def valid_sequences(self, query_file, as_dna=False):
         for sequence in SeqIO.parse(query_file, 'fasta'):
             if as_dna:
                 sequence.seq = sequence.seq.back_transcribe()
 
-            if self.valid_sequence(sequence):
-                urs = re.sub('_\d+$', '', sequence.id)
-                self.mapping[urs] = gm.SequenceSummary(
-                    id=sequence.id,
-                    urs=urs,
-                    header=sequence.description,
-                    length=len(sequence),
-                )
+            if self.is_valid_sequence(sequence):
                 yield sequence
 
     def parse_result_file(self, result_file, target_file):
-        for sequence in self.sequences(target_file):
-            pass
+        data = SearchIO.index(result_file, self.format)
+        return self.create_mappings(target_file, data)
 
-        data = list(SearchIO.parse(result_file, self.format))
-        return self.create_mappings(data)
-
-    def create_mappings(self, matches):
+    def create_mappings(self, query_file, result_index):
         """Create the mappings from the given raw data. The mapping objects in
         genome_mapping.data are clearer (to me at least) so I would rather use
         those sequences instead of the ones provided by BioPython. This
@@ -107,9 +90,17 @@ class Mapper(object):
             list, that is to say there will be several MappingHit's for it.
         """
 
-        for result in matches:
-            sequence = self.lookup_sequence(result)
-            for hit in result:
+        for record in self.valid_sequences(query_file):
+
+            urs = re.sub('_\d+$', '', record.id)
+            sequence = gm.SequenceSummary(
+                id=record.id,
+                urs=urs,
+                header=record.description,
+                length=len(record),
+            )
+
+            for hit in result_index[sequence.id]:
                 for hsp_index, hsp in enumerate(hit):
                     subhits = []
                     for frag_index, fragment in enumerate(hsp):
@@ -122,14 +113,14 @@ class Mapper(object):
                         assert frag_length.query >= 0, "Bad %s" % frag_length
 
                         frag_completeness = gm.PairStat(
-                            query=frag_length.query / result.seq_len,
+                            query=frag_length.query / sequence.length,
                             hit=-1,
                         )
 
                         start, end = sorted([hsp.hit_start, hsp.hit_end])
 
                         name = "{urs} ({cur_hsp}/{total_hsp}) ({cur_frag}/{total_frag})".format(
-                            urs=result.id,
+                            urs=sequence.urs,
                             cur_hsp=hsp_index + 1,
                             total_hsp=len(hit),
                             cur_frag=frag_index + 1,
@@ -150,10 +141,13 @@ class Mapper(object):
                     assert len(set(h.chromosome for h in subhits)) == 1
                     assert 0 < sum(h.stats.length.query for h in subhits) <= \
                         sequence.length
-                    assert 0 <= sum(h.stats.completeness.query for h in subhits) <= 1
+
+                    complete = (h.stats.completeness.query for h in subhits)
+                    complete = round(sum(complete), 1)
+                    assert 0.0 <= complete <= 1.0, "Overly complete: %s" % complete
 
                     yield gm.Hit(
-                        urs=result.id,
+                        urs=sequence.urs,
                         chromosome=hit.id,
                         start=hsp.hit_start,
                         stop=hsp.hit_end,
@@ -191,7 +185,7 @@ class Mapper(object):
         """
 
         output = self.run(genome_file, query_file)
-        return self.create_mappings(output)
+        return self.create_mappings(query_file, output)
 
 
 class BlatMapper(Mapper):
@@ -224,7 +218,7 @@ class BlatMapper(Mapper):
         super(BlatMapper, self).__init__()
         self.path = path
 
-    def valid_sequence(self, sequence):
+    def is_valid_sequence(self, sequence):
         """
         Filter all sequences to only those that are long enough. BLAT does
         not work with short,  25 nt, sequences.
@@ -276,7 +270,7 @@ class BlatMapper(Mapper):
                 ]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stderr=null, stdout=null)
-                return list(SearchIO.parse(psl.name, self.format))
+                return SearchIO.index(psl.name, self.format)
 
 
 class BlastMapper(Mapper):
@@ -292,7 +286,7 @@ class BlastMapper(Mapper):
         super(BlastMapper, self).__init__()
         self.path = path
 
-    def valid_sequence(self, sequence):
+    def is_valid_sequence(self, sequence):
         return True
 
     def run(self, genome_file, query_path, options=[]):
@@ -327,7 +321,7 @@ class BlastMapper(Mapper):
                 ]
                 with open('/dev/null', 'wb') as null:
                     sp.check_call(cmd, stdout=null)
-                return list(SearchIO.parse(tmp.name, self.format))
+                return SearchIO.index(tmp.name, self.format)
 
 
 class ExonerateMapper(Mapper):
@@ -345,7 +339,7 @@ class ExonerateMapper(Mapper):
         super(ExonerateMapper, self).__init__()
         self.path = path
 
-    def valid_sequence(self, sequence):
+    def is_valid_sequence(self, sequence):
         return True
 
     def run(self, genome_file, query_path, options=[]):
@@ -370,4 +364,4 @@ class ExonerateMapper(Mapper):
                     genome_file,
                 ]
                 sp.check_call(cmd, stdout=tmp)
-                return list(SearchIO.parse(tmp.name, self.format))
+                return SearchIO.index(tmp.name, self.format)

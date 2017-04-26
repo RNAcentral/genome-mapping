@@ -3,7 +3,7 @@
 import os
 import csv
 import sys
-import pickle
+import cPickle
 import json
 import itertools as it
 from pprint import pprint
@@ -21,26 +21,30 @@ from genome_mapping.intervals import Tree
 from genome_mapping.data import RESULT_TYPE
 
 
-class ReadablePickleFile(click.File):
+class ReadableDataFile(click.File):
     name = 'readable-pickle'
 
     def __init__(self):
-        super(ReadablePickleFile, self).__init__(mode='rb')
+        super(ReadableDataFile, self).__init__(mode='rb')
 
     def convert(self, value, param, ctx):
-        fileobj = super(ReadablePickleFile, self).convert(value, param, ctx)
-        return pickle.load(fileobj)
+        fileobj = super(ReadableDataFile, self).convert(value, param, ctx)
+        try:
+            while True:
+                yield cPickle.load(fileobj)
+        except EOFError:
+            raise StopIteration
 
 
-class WritablePickleFile(click.File):
+class WritableDataFile(click.File):
     name = 'writeable-pickle'
 
     def __init__(self):
-        super(WritablePickleFile, self).__init__(mode='wb')
+        super(WritableDataFile, self).__init__(mode='wb')
 
     def convert(self, value, param, ctx):
-        fileobj = super(WritablePickleFile, self).convert(value, param, ctx)
-        return lambda d: pickle.dump(d, fileobj)
+        fileobj = super(WritableDataFile, self).convert(value, param, ctx)
+        return lambda d: cPickle.dump(d, fileobj)
 
 
 class KeyValue(click.ParamType):
@@ -61,7 +65,7 @@ def cli():
 @cli.command('find')
 @click.argument('genome', type=click.Path(readable=True))
 @click.argument('targets', type=click.Path(exists=True, readable=True))
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 @click.option('--method', default='blat',
               type=click.Choice(mappers.known()))
 @click.option('--organism', default='UNKNOWN')
@@ -83,7 +87,7 @@ def find(genome, targets, save, method='blat', organism='UNKNOWN'):
     """
     mapper_class = mappers.fetch(method)
     mapper = mapper_class()
-    save(list(mapper(genome, targets)))
+    save(mapper(genome, targets))
 
 
 @cli.group('hits')
@@ -97,7 +101,7 @@ def hits():
 @hits.command('from-format')
 @click.argument('data', type=click.Path(exists=True, readable=True))
 @click.argument('targets', type=click.Path(exists=True, readable=True))
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 @click.option('--format',
               type=click.Choice(mappers.known_formats().keys() + [None]),
               default=None)
@@ -105,17 +109,17 @@ def format_to_hits(data, targets, save, format=None):
     if not format:
         _, ext = os.path.splitext(data)
         format = ext[1:]
+        if format not in mappers.known_formats():
+            raise ValueError("Unknown inferred format %s" % format)
 
-    if format not in mappers.known_formats():
-        raise ValueError("Unknown inferred format %s" % format)
-
-    save(list(mappers.from_format(data, targets, format)))
+    for hit in mappers.from_format(data, targets, format):
+        save(hit)
 
 
 @hits.command('select')
-@click.argument('hits', type=ReadablePickleFile())
+@click.argument('hits', type=ReadableDataFile())
 @click.argument('matcher', type=click.Choice(matchers.known()))
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 @click.option('--define', multiple=True, default={}, type=KeyValue())
 def hits_select(hits, matcher, save, define={}):
     """
@@ -128,13 +132,14 @@ def hits_select(hits, matcher, save, define={}):
 
     matcher_class = matchers.fetch(matcher)
     matcher = matcher_class(**definitions)
-    save(list(matcher.filter_matches(hits)))
+    for filtered in matcher.filter_matches(hits):
+        save(filtered)
 
 
 @hits.command('select-using-spec')
-@click.argument('hits', type=ReadablePickleFile())
+@click.argument('hits', type=ReadableDataFile())
 @click.argument('spec-file', type=click.File('rb'))
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 def hits_select_spec(hits, spec_file, save):
     """
     Select hits using the specifications in the given file. The file be a json
@@ -148,42 +153,35 @@ def hits_select_spec(hits, spec_file, save):
     definitions = spec.get('definitions', {})
     matcher_class = matchers.fetch(matcher)
     matcher = matcher_class(**definitions)
-    save(list(matcher.filter_matches(hits)))
+    for filtered in matcher.filter_matches(hits):
+        save(filtered)
 
 
 @hits.command('compare')
-@click.argument('hits', type=ReadablePickleFile())
+@click.argument('hits', type=ReadableDataFile())
 @click.argument('correct', type=click.Path(exists=True, readable=True))
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 def compare_matches(hits, correct, save):
     """
     Compare some hits to known examples to see how well they overlap.
     """
     tree = Tree(correct)
-    save(tree.compare_to_known(hits))
+    for compared in tree.compare_to_known(hits):
+        save(compared)
 
 
 @hits.command('best-within')
-@click.argument('hits', type=ReadablePickleFile())
+@click.argument('hits', type=ReadableDataFile())
 @click.argument('features', type=click.Path(exists=True, readable=True))
 @click.argument('max-range', type=int)
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 def best_within(hits, features, max_range, save):
     """
     Find the best hits within some distance of the given features.
     """
     tree = Tree(features)
-    save(tree.best_hits_within(hits, max_range))
-
-
-@hits.command('merge')
-@click.argument('hits', type=ReadablePickleFile(), nargs=-1)
-@click.argument('save', type=WritablePickleFile())
-def merge_hits(hits, save):
-    """Merge several collections hits. This should not produce any duplicate
-    hits.
-    """
-    save(sorted(set(it.chain.from_iterable(hits))))
+    for best in tree.best_hits_within(hits, max_range):
+        save(best)
 
 
 @cli.group('comparisons')
@@ -194,9 +192,9 @@ def comparisons():
 
 
 @comparisons.command('select')
-@click.argument('comparisons', type=ReadablePickleFile())
+@click.argument('comparisons', type=ReadableDataFile())
 @click.argument('filter', type=str, nargs=-1)
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 def comparisons_select(comparisons, filter, save):
     """
     Filter comparisons to only those of the given type(s).
@@ -216,28 +214,26 @@ def comparisons_select(comparisons, filter, save):
         locals.update((t, t) for t in it.chain(RESULT_TYPE, each))
         return eval(ast, {}, dict(locals))
 
-    save([comp for comp in comparisons if checker(comp)])
+    save(comp for comp in comparisons if checker(comp))
 
 
 @comparisons.command('extract')
-@click.argument('comparisons', type=ReadablePickleFile())
+@click.argument('comparisons', type=ReadableDataFile())
 @click.argument('property')
-@click.argument('save', type=WritablePickleFile())
+@click.argument('save', type=WritableDataFile())
 @click.option('--skip-missing', is_flag=True, default=False)
 def comparisons_extract(comparisons, property, save, skip_missing=False):
     """Extract parts of the given comparisons.
     """
-    extracted = []
     for comparision in comparisons:
         entry = getattr(comparision, property)
         if skip_missing and not entry:
             continue
-        extracted.append(entry)
-    save(extracted)
+        save(entry)
 
 
 @comparisons.command('summary')
-@click.argument('comparisons', type=ReadablePickleFile())
+@click.argument('comparisons', type=ReadableDataFile())
 @click.argument('save', type=click.File(mode='wb'))
 def comparisons_summarize(comparisons, save):
     """
@@ -249,31 +245,14 @@ def comparisons_summarize(comparisons, save):
     writer.writerow(summary)
 
 
-@comparisons.command('detect-variants')
-@click.argument('comparisons', type=ReadablePickleFile())
-@click.argument('save', type=WritablePickleFile())
-def comparisons_detect_variants(comparisons, save):
-    """Detect an splicing hits that are due to disagreement in locations
-    between splicing variants. For example a location may have the splice
-    variant noted, but the unspliced variant matches there as well.
-    """
-    # For all incorrect_exact matches
-    # Find what the correct urs in the location is
-    # See if there is a correct hit in the location
-    # If in_hit has > 1 fragment and the correct hit has 1 => Spliced match transcript
-    # If in_hit has 1 fragment and the correct has > 1 => transcript match spliced
-    # Else leave alone
-    pass
-
-
 @comparisons.group('group')
 def comparisons_group():
     pass
 
 
 @comparisons_group.command('by-hit-urs')
-@click.argument('comparisons', type=ReadablePickleFile())
-@click.argument('save', type=WritablePickleFile())
+@click.argument('comparisons', type=ReadableDataFile())
+@click.argument('save', type=WritableDataFile())
 def comparisons_group_hit_urs(comparisons, save):
     def key(comparision):
         if comparision.hit:
@@ -285,7 +264,7 @@ def comparisons_group_hit_urs(comparisons, save):
 
 
 @comparisons_group.command('summarize-types')
-@click.argument('grouped', type=ReadablePickleFile())
+@click.argument('grouped', type=ReadableDataFile())
 @click.argument('save', type=click.File(mode='wb'))
 def comparisons_group_summary_type(grouped, save):
     header = ['urs'] + list(RESULT_TYPE)
@@ -300,7 +279,7 @@ def comparisons_group_summary_type(grouped, save):
 
 @cli.command('as')
 @click.argument('format', type=click.Choice(formatters.known()))
-@click.argument('data', type=ReadablePickleFile())
+@click.argument('data', type=ReadableDataFile())
 @click.argument('save', type=click.File(mode='wb'))
 def format(format, data, save):
     """
@@ -319,34 +298,12 @@ def format(format, data, save):
 
 
 @cli.command('pp')
-@click.argument('data', type=ReadablePickleFile())
+@click.argument('data', type=ReadableDataFile())
 def display(data):
     """
     Pretty print data to stdout.
     """
     pprint(data)
-
-
-@cli.command('head')
-@click.argument('data', type=ReadablePickleFile())
-@click.argument('save', type=WritablePickleFile())
-@click.option('--count', type=int, default=10)
-def head(data, save, count):
-    return slice_of(data, 0, count, save)
-
-
-# @cli.command('slice')
-# @click.argument('data', type=ReadablePickleFile())
-# @click.argument('start', type=int, default=0)
-# @click.argument('stop', type=int, default=10)
-# @click.argument('save', type=WritablePickleFile())
-def slice_of(data, start, stop, save):
-    if isinstance(data, (tuple, list)):
-        return save(data[start:stop])
-    if isinstance(data, dict):
-        keys = sorted(data.iterkeys())[start:stop]
-        return save({k: data[k] for k in keys})
-    raise ValueError("Cannot slice given type")
 
 
 if __name__ == '__main__':

@@ -100,7 +100,7 @@ class Stats(object):
 
     def __attrs_post_init__(self):
         try:
-            assert 0 <= self.completeness.query <= 1
+            assert 0 <= round(self.completeness.query, 1) <= 1
         except Exception as err:
             raise ValueError("Invalid Stats object (%s) '%s'" %
                              (str(self), err))

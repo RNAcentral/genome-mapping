@@ -108,14 +108,10 @@ class HighestIdentityFilter(PercentIdentityFilter):
         ordered = sorted(group, key=attr, reverse=True)
         best = attr(ordered[0])
         return it.takewhile(lambda h: attr(h) == best, ordered)
-        # if best == 100:
-        #     return found
-        # return [next(found)]
 
     def filter_matches(self, hits):
         key = op.attrgetter('urs')
         grouped = it.ifilter(self.is_valid_hit, hits)
-        grouped = sorted(grouped, key=key)
         grouped = it.groupby(grouped, key)
         for _, group in grouped:
             for hit in self.best_in_group(group):
