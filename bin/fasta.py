@@ -126,5 +126,16 @@ def uppercase(fasta, save):
         save(record.upper())
 
 
+@main.command('filter-by-size')
+@click.argument('fasta', type=ReadableBioFile('fasta'))
+@click.argument('save', type=WriteableBioFile('fasta'))
+@click.option('--min', type=float, default=float('-inf'))
+@click.option('--max', type=float, default=float('inf'))
+def size_filter(fasta, save, min=None, max=None):
+    for record in fasta:
+        if min <= len(record) < max:
+            save(record)
+
+
 if __name__ == '__main__':
     main()
