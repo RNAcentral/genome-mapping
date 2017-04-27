@@ -3,7 +3,7 @@ all_md5=data/md5.tsv
 
 all : pombe zebrafish worm fly
 
-.PRECIOUS: $(all_md5)
+.PRECIOUS: $(all_md5) data/%/targets.psl data/%/unknown.psl data/%/unknown-hits.pickle data/%/targets-hits.pickle data/%/targets-compared.pickle
 
 ###############################################################################
 # pombe
@@ -79,6 +79,7 @@ data/zebrafish/raw.bed : bin/fetch-bed
 data/zebrafish/targets.bed : bin/targets-bed data/zebrafish/raw.bed data/zebrafish/known.gff3 data/zebrafish/bad-ids
 	$^ | sed 's|^chr||' > $@
 
+
 ###############################################################################
 # Generic Definitions
 ###############################################################################
@@ -100,7 +101,7 @@ data/%/targets.bed : bin/targets-bed data/%/raw.bed data/%/known.gff3 data/%/bad
 	$^ > $@
 
 data/%/targets.fasta : bin/targets data/%/genome.fasta data/%/targets.bed data/%/md5sums.txt data/%/known-md5.txt
-	$^ > $@
+	$^ $@
 
 data/%/targets.psl : bin/blat data/%/genome.fasta data/%/targets.fasta
 	$(word 1,$^) $(word 2,$^) $(word 3,$^) $(shell bin/job-count $(word 2,$^) $(word 3,$^)) $@
