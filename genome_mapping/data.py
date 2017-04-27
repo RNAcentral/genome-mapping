@@ -27,6 +27,8 @@ RESULT_TYPE = frozenset([
     'incorrect_UNKNOWN',
     'novel',
     'missing',
+    'skipped',
+    'bad_sequence',
 ])
 
 
@@ -171,7 +173,7 @@ class ComparisionType(object):
     hit_type = attr.ib(validator=optional(IS_STR))
 
     @classmethod
-    def build(cls, shift, hit, feature):
+    def build(cls, shift, hit, feature, skipped=False):
         shift_type = '{match_type}_{location_type}_{feature_type}_{hit_type}'
 
         if not hit and not feature:

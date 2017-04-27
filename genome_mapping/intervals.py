@@ -36,9 +36,9 @@ class Tree(object):
         return {i.data for i in self.tree.search(start, stop)}
 
     def compare_to_known(self, hits, reduce_duplicates=True,
-                         ignore_missing_chromosome=True):
+                         ignore_missing_chromosome=True,
+                         skipped=[]):
         seen = set()
-        compared = []
         for hit in hits:
             if hit.chromosome not in self.trees:
                 if ignore_missing_chromosome:
@@ -48,7 +48,7 @@ class Tree(object):
             tree = self.trees[hit.chromosome]
             intervals = tree.search(hit.start, hit.stop)
             if not intervals:
-                compared.append(Comparision.build(hit, None))
+                yield Comparision.build(hit, None)
                 continue
 
             if reduce_duplicates and len(intervals) > 1:
@@ -60,14 +60,15 @@ class Tree(object):
 
             for interval in intervals:
                 feature = interval.data
-                compared.append(Comparision.build(hit, feature))
+                yield Comparision.build(hit, feature)
                 seen.add(interval)
 
-        rest = it.chain.from_iterable(self.trees.itervalues())
-        rest = it.ifilter(lambda f: f not in seen, rest)
-        rest = it.imap(lambda i: Comparision.build(None, i.data), rest)
-        compared.extend(rest)
-        return compared
+        for interval in self.trees.itervalues():
+            if interval not in seen:
+                yield Comparision.build(None, interval.data)
+
+        for feature in skipped:
+            yield Comparision.skipped(feature)
 
     def best_hits_within(self, hits, max_range):
         # For each feature search for all hits within max_range of the feature.
