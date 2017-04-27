@@ -1,3 +1,5 @@
 3a1cea7cb25bfc0d4689d2830517aa3e  data/pombe/genome.fasta
+9f3583e8879a31d63045f0be4d86b4e5  data/pombe/raw.bed
+7a7124389d72575806ef994357809a0c  data/pombe/known-md5.txt
 397777522417af3f97e7cc44086dd08e  data/pombe/known.gff3
 10447dba74c310e1bacbc3097e1fc170  data/pombe/targets.bed
