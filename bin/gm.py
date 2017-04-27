@@ -239,10 +239,11 @@ def comparisons_summarize(comparisons, save):
     """
     Compute a summary of the number of each type of comparisons.
     """
-    summary = dict(coll.Counter(c.type.pretty for c in comparisons))
-    writer = csv.DictWriter(save, sorted(summary.keys()))
+    counts = dict(coll.Counter(c.type.pretty for c in comparisons))
+    keys = sorted(RESULT_TYPE)
+    writer = csv.DictWriter(save, ['type', 'count'])
     writer.writeheader()
-    writer.writerow(summary)
+    writer.writerows([{'type': k, 'count': counts[k]} for k in keys])
 
 
 @comparisons.group('group')
